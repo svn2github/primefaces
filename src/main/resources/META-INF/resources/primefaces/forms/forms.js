@@ -204,15 +204,17 @@ PrimeFaces.widget.SelectOneMenu = function(id, cfg) {
     this.jqId = PrimeFaces.escapeClientId(this.id);
     this.jq = $(this.jqId);
     this.input = $(this.jqId + '_input');
-    this.label = this.jq.children('.ui-selectonemenu-label');
+    this.labelContainer = this.jq.find('.ui-selectonemenu-label-container');
+    this.label = this.jq.find('.ui-selectonemenu-label');
     this.menuIcon = this.jq.children('.ui-selectonemenu-trigger');
-    this.triggers = this.jq.children('.ui-selectonemenu-trigger, .ui-selectonemenu-label');
+    this.triggers = this.jq.find('.ui-selectonemenu-trigger, .ui-selectonemenu-label');
     this.panel = this.jq.children('.ui-selectonemenu-panel');
     this.disabled = this.jq.hasClass('ui-state-disabled');
     this.panel.css('width', this.jq.width());
 
-    if(!this.cfg.effectDuration)
+    if(!this.cfg.effectDuration) {
         this.cfg.effectDuration = 400;
+    }
 
     this.bindEvents();
 
@@ -266,17 +268,21 @@ PrimeFaces.widget.SelectOneMenu.prototype.bindEvents = function() {
         if(!_self.disabled) {
             _self.triggers.removeClass('ui-state-hover');
         }
-    }).click(function() {
+    }).click(function(e) {
+
         if(!_self.disabled) {
             if(_self.panel.is(":hidden"))
                 _self.show();
             else
                 _self.hide();
         }
+
+        e.preventDefault();
     });
 
     var offset;
 
+    //hide overlay when outside is clicked
     $(document.body).bind('click', function (e) {
         if (_self.panel.is(":hidden")) {
             return;
@@ -294,6 +300,84 @@ PrimeFaces.widget.SelectOneMenu.prototype.bindEvents = function() {
             _self.hide();
         }
         _self.hide();
+    });
+
+    //key bindings
+    this.highlightLetter = null;
+
+    this.labelContainer.keydown(function(e) {
+
+        var keyCode = $.ui.keyCode;
+
+        switch (e.which) {
+            case keyCode.UP:
+            case keyCode.LEFT:
+                var highlightedItem = items.filter('.ui-state-active'),
+                previousItem = highlightedItem.prev();
+
+                if(previousItem.length > 0) {
+                    highlightedItem.removeClass('ui-state-active');
+                    previousItem.addClass('ui-state-active');
+                }
+                break;
+
+            case keyCode.DOWN:
+            case keyCode.RIGHT:
+                var highlightedItem = items.filter('.ui-state-active'),
+                nextItem = highlightedItem.next();
+
+                if(nextItem.length > 0) {
+                    highlightedItem.removeClass('ui-state-active');
+                    nextItem.addClass('ui-state-active');
+                }
+                break;
+
+            case keyCode.ENTER:
+            case keyCode.NUMPAD_ENTER:
+                    items.filter('.ui-state-active').click();
+                break;
+
+            default:
+                var letter = String.fromCharCode(e.keyCode).toLowerCase(),
+                options = $(_self.input).children('option');
+
+                if(_self.highlightLetter != letter) {
+                    _self.highlightLetter = letter;
+                    _self.highlightIndex = null;
+                    _self.highlightItems = null;
+                }
+
+                if(_self.highlightItems == null) {
+                    _self.highlightItems = [];
+
+                    options.each(function(i, option) {
+                        if(option.text.toLowerCase().indexOf(letter) == 0) {
+                            _self.highlightItems.push(items.eq(i));
+                        }
+                    });
+                }
+
+                if(_self.highlightItems.length > 0) {
+
+                    //find item to highlight
+                    if(_self.highlightIndex == null) {
+                        _self.highlightIndex = 0;
+                    } else {
+                        _self.highlightIndex++;
+
+                        if(_self.highlightIndex == _self.highlightItems.length) {
+                            _self.highlightIndex = 0;
+                        }
+                    }
+
+                    var highlightItem = _self.highlightItems[_self.highlightIndex];
+
+                    items.removeClass('ui-state-active');   //clear previous highlighted ones if any
+                    highlightItem.addClass('ui-state-active');
+                }
+        };
+
+        e.preventDefault();
     });
 }
 

@@ -13,39 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.primefaces.event;
+package org.primefaces.event.data;
 
 import javax.faces.component.UIComponent;
 import javax.faces.component.behavior.Behavior;
 import javax.faces.event.AjaxBehaviorEvent;
 import javax.faces.event.FacesListener;
+import org.primefaces.component.column.Column;
 
-import org.primefaces.model.TreeNode;
+public class SortEvent extends AjaxBehaviorEvent {
 
-public class NodeUnselectEvent extends AjaxBehaviorEvent {
-
-	private TreeNode treeNode;
+	private Column sortColumn;
+    
+    private boolean ascending;
 	
-	public NodeUnselectEvent(UIComponent component, Behavior behavior, TreeNode treeNode) {
+	public SortEvent(UIComponent component, Behavior behavior, Column sortColumn, boolean ascending) {
 		super(component, behavior);
-		this.treeNode = treeNode;
+		this.sortColumn = sortColumn;
+        this.ascending = ascending;
 	}
 
 	@Override
-	public boolean isAppropriateListener(FacesListener listener) {
+	public boolean isAppropriateListener(FacesListener faceslistener) {
 		return false;
 	}
 
 	@Override
-	public void processListener(FacesListener listener) {
+	public void processListener(FacesListener faceslistener) {
 		throw new UnsupportedOperationException();
 	}
 
-	public TreeNode getTreeNode() {
-		return treeNode;
-	}
+    public boolean isAscending() {
+        return ascending;
+    }
 
-	public void setTreeNode(TreeNode treeNode) {
-		this.treeNode = treeNode;
-	}
+    public Column getSortColumn() {
+        return sortColumn;
+    }
 }

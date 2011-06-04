@@ -32,14 +32,13 @@ import org.primefaces.component.column.Column;
 import org.primefaces.component.columngroup.ColumnGroup;
 import org.primefaces.component.row.Row;
 import org.primefaces.context.RequestContext;
-import org.primefaces.event.SelectEvent;
-import org.primefaces.event.UnselectEvent;
 import org.primefaces.model.BeanPropertyComparator;
 import org.primefaces.model.Cell;
 
 class DataHelper {
 
     void decodePageRequest(FacesContext context, DataTable table) {
+        table.setRowIndex(-1);
         String clientId = table.getClientId(context);
 		Map<String,String> params = context.getExternalContext().getRequestParameterMap();
         
@@ -53,6 +52,7 @@ class DataHelper {
 	}
 
     void decodeSortRequest(FacesContext context, DataTable table) {
+        table.setRowIndex(-1);
         String clientId = table.getClientId(context);
 		Map<String,String> params = context.getExternalContext().getRequestParameterMap();
         
@@ -178,8 +178,12 @@ class DataHelper {
 
             //Metadata for callback
             if(table.isPaginator()) {
-                int totalRecords = isAllFiltered ? table.getRowCount() : filteredData.size();
-                RequestContext.getCurrentInstance().addCallbackParam("totalRecords", totalRecords);
+                RequestContext requestContext = RequestContext.getCurrentInstance();
+                
+                if(requestContext != null) {
+                  int totalRecords = isAllFiltered ? table.getRowCount() : filteredData.size();
+                  requestContext.addCallbackParam("totalRecords", totalRecords);
+                }
             }
 
             //No need to define filtered data if it is same as actual data
@@ -208,27 +212,6 @@ class DataHelper {
 			decodeSingleSelection(table, selection);
 		else
 			decodeMultipleSelection(table, selection);
-
-        //Instant selection and unselection
-        queueInstantSelectionEvent(context, table, clientId, params);
-	}
-
-    void queueInstantSelectionEvent(FacesContext context, DataTable table, String clientId, Map<String,String> params) {
-
-		if(table.isInstantSelectionRequest(context)) {
-            int selectedRowIndex = Integer.parseInt(params.get(clientId + "_instantSelectedRowIndex"));
-            table.setRowIndex(selectedRowIndex);
-            SelectEvent selectEvent = new SelectEvent(table, table.getRowData());
-            selectEvent.setPhaseId(PhaseId.INVOKE_APPLICATION);
-            table.queueEvent(selectEvent);
-        }
-        else if(table.isInstantUnselectionRequest(context)) {
-            int unselectedRowIndex = Integer.parseInt(params.get(clientId + "_instantUnselectedRowIndex"));
-            table.setRowIndex(unselectedRowIndex);
-            UnselectEvent unselectEvent = new UnselectEvent(table, table.getRowData());
-            unselectEvent.setPhaseId(PhaseId.INVOKE_APPLICATION);
-            table.queueEvent(unselectEvent);
-        }
 	}
 
     void decodeSingleSelection(DataTable table, String selection) {

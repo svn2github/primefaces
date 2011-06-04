@@ -7,7 +7,6 @@
     <tag>panel</tag>
     <tagClass>org.primefaces.component.panel.PanelTag</tagClass>
     <componentClass>org.primefaces.component.panel.Panel</componentClass>
-    <componentHandlerClass>org.primefaces.component.panel.PanelHandler</componentHandlerClass>
     <componentType>org.primefaces.component.Panel</componentType>
     <componentFamily>org.primefaces.component</componentFamily>
     <rendererType>org.primefaces.component.PanelRenderer</rendererType>
@@ -79,6 +78,21 @@
             <required>false</required>
             <type>java.lang.Boolean</type>
             <defaultValue>true</defaultValue>
+        </attribute>
+        <attribute>
+            <name>closeTitle</name>
+            <required>false</required>
+            <type>java.lang.String</type>
+        </attribute>
+        <attribute>
+            <name>toggleTitle</name>
+            <required>false</required>
+            <type>java.lang.String</type>
+        </attribute>
+        <attribute>
+            <name>menuTitle</name>
+            <required>false</required>
+            <type>java.lang.String</type>
         </attribute>
     </attributes>
     <resources>

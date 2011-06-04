@@ -101,13 +101,18 @@ public class SelectOneMenuRenderer extends InputRenderer {
 
     protected void encodeLabel(FacesContext context, SelectOneMenu menu, List<SelectItem> selectItems) throws IOException {
         ResponseWriter writer = context.getResponseWriter();
-        
+
+        writer.startElement("a", null);
+        writer.writeAttribute("href", "#", null);
+        writer.writeAttribute("class", SelectOneMenu.LABEL_CONTAINER_CLASS, null);
+
         writer.startElement("label", null);
         writer.writeAttribute("class", SelectOneMenu.LABEL_CLASS, null);
 
         writer.writeText(getSelectedLabel(context, menu, selectItems), null);
 
         writer.endElement("label");
+        writer.endElement("a");
     }
 
     protected void encodeMenuIcon(FacesContext context, SelectOneMenu menu) throws IOException {
@@ -187,12 +192,13 @@ public class SelectOneMenuRenderer extends InputRenderer {
 
     protected void encodeOptionsAsList(FacesContext context, SelectOneMenu menu, List<SelectItem> selectItems) throws IOException {
         ResponseWriter writer = context.getResponseWriter();
-        String var = menu.getVar();
         Object value = menu.getValue();
 
-        for(SelectItem selectItem : selectItems) {
+        for(int i = 0; i < selectItems.size(); i++) {
+            SelectItem selectItem = selectItems.get(i);
             Object itemValue = selectItem.getValue();
-            boolean selected = (value != null && value.equals(itemValue));
+
+            boolean selected = (i==0 && value==null) || (value != null && value.equals(itemValue));
             String itemStyleClass = selected ? SelectOneMenu.ITEM_CLASS + " ui-state-active" : SelectOneMenu.ITEM_CLASS;
             
             writer.startElement("li", null);

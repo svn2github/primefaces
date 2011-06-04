@@ -13,39 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.primefaces.event;
+package org.primefaces.event.data;
 
 import javax.faces.component.UIComponent;
 import javax.faces.component.behavior.Behavior;
 import javax.faces.event.AjaxBehaviorEvent;
 import javax.faces.event.FacesListener;
 
-import org.primefaces.model.TreeNode;
+public class PageEvent extends AjaxBehaviorEvent {
 
-public class NodeUnselectEvent extends AjaxBehaviorEvent {
-
-	private TreeNode treeNode;
+	private int page;
 	
-	public NodeUnselectEvent(UIComponent component, Behavior behavior, TreeNode treeNode) {
+	public PageEvent(UIComponent component, Behavior behavior, int page) {
 		super(component, behavior);
-		this.treeNode = treeNode;
+		this.page = page;
 	}
 
 	@Override
-	public boolean isAppropriateListener(FacesListener listener) {
+	public boolean isAppropriateListener(FacesListener faceslistener) {
 		return false;
 	}
 
 	@Override
-	public void processListener(FacesListener listener) {
+	public void processListener(FacesListener faceslistener) {
 		throw new UnsupportedOperationException();
 	}
 
-	public TreeNode getTreeNode() {
-		return treeNode;
-	}
-
-	public void setTreeNode(TreeNode treeNode) {
-		this.treeNode = treeNode;
-	}
+    public int getPage() {
+        return page;
+    }
 }

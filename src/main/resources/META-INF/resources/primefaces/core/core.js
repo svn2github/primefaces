@@ -101,16 +101,18 @@ PrimeFaces.ajax.AjaxUtils = {
     },
 	
     updateState: function(value) {
+        var viewstateValue = $.trim(value);
+        
         $("form").each(function() {
             var form = $(this),
-            formViewState = form.children("input[name='javax.faces.ViewState']").get(0);
+            formViewStateElement = form.children("input[name='javax.faces.ViewState']").get(0);
 
-            if(formViewState) {
-                $(formViewState).val(value);
+            if(formViewStateElement) {
+                $(formViewStateElement).val(viewstateValue);
             }
             else
             {
-                form.append('<input type="hidden" name="javax.faces.ViewState" id="javax.faces.ViewState" value="' + value + '" autocomplete="off" />');
+                form.append('<input type="hidden" name="javax.faces.ViewState" id="javax.faces.ViewState" value="' + viewstateValue + '" autocomplete="off" />');
             }
         });
     },
@@ -157,6 +159,41 @@ PrimeFaces.ajax.AjaxUtils = {
                 controls.filter("select:not([data-role='slider'])" ).selectmenu();
             }
         }
+    },
+
+    /**
+     *  Handles response handling tasks after updating the dom
+     **/
+    handleResponse: function(xmlDoc) {
+        var redirect = xmlDoc.getElementsByTagName("redirect"),
+        extensions = xmlDoc.getElementsByTagName("extension"),
+        scripts = xmlDoc.getElementsByTagName("eval");
+
+        if(redirect.length > 0) {
+            window.location = redirect[0].attributes.getNamedItem("url").nodeValue;
+        }
+        else {
+            //callbsack arguments
+            this.args = {};
+            for(var i=0; i < extensions.length; i++) {
+                var extension = extensions[i];
+
+                if(extension.getAttributeNode('primefacesCallbackParam')) {
+                    var jsonObj = $.parseJSON(extension.firstChild.data);
+
+                    for(var paramName in jsonObj) {
+                        if(paramName)
+                            this.args[paramName] = jsonObj[paramName];
+                    }
+                }
+            }
+
+            //scripts to execute
+            for(i=0; i < scripts.length; i++) {
+                $.globalEval(scripts[i].firstChild.data);
+            }
+            
+        }
     }
 };
 
@@ -168,11 +205,19 @@ PrimeFaces.ajax.AjaxRequest = function(cfg) {
        }
     }
 
-    var form = $(PrimeFaces.escapeClientId(cfg.source)).parents('form:first');
-    if(form.length == 0) {
-        form = $('form').eq(0);
+    var form = null;
+    if(cfg.formId) {
+        form = $(PrimeFaces.escapeClientId(cfg.formId));                    //Explicit form is defined
     }
-    
+    else {
+        form = $(PrimeFaces.escapeClientId(cfg.source)).parents('form:first');     //look for a parent of source
+
+        //source has no parent form so use first form in document
+        if(form.length == 0) {
+            form = $('form').eq(0);
+        }
+    }
+
     var postURL = form.attr('action'),
     postParams = form.serialize(),
     encodedURLfield = form.children("input[name='javax.faces.encodedURL']");
@@ -263,35 +308,16 @@ PrimeFaces.ajax.AjaxRequest = function(cfg) {
 
 PrimeFaces.ajax.AjaxResponse = function(responseXML) {
     var xmlDoc = responseXML.documentElement,
-    updates = xmlDoc.getElementsByTagName("update"),
-    redirect = xmlDoc.getElementsByTagName("redirect"),
-    extensions = xmlDoc.getElementsByTagName("extension");
+    updates = xmlDoc.getElementsByTagName("update");
 
-    if(redirect.length > 0) {
-        window.location = redirect[0].attributes.getNamedItem("url").nodeValue;
-    } else {
+    for(var i=0; i < updates.length; i++) {
+        var id = updates[i].attributes.getNamedItem("id").nodeValue,
+        content = updates[i].firstChild.data;
 
-        for(var i=0; i < updates.length; i++) {
-            var id = updates[i].attributes.getNamedItem("id").nodeValue,
-            content = updates[i].firstChild.data;
-
-            PrimeFaces.ajax.AjaxUtils.updateElement(id, content);
-        }
+        PrimeFaces.ajax.AjaxUtils.updateElement(id, content);
     }
 
-    this.args = {};
-    for(i=0; i < extensions.length; i++) {
-        var extension = extensions[i];
-        
-        if(extension.getAttributeNode('primefacesCallbackParam')) {
-            var jsonObj = $.parseJSON(extension.firstChild.data);
-
-            for(var paramName in jsonObj) {
-                if(paramName)
-                    this.args[paramName] = jsonObj[paramName];
-            }
-        }
-    }
+    PrimeFaces.ajax.AjaxUtils.handleResponse.call(this, xmlDoc);
 }
 
 PrimeFaces.ajax.RequestManager = {

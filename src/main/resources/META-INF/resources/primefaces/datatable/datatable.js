@@ -130,7 +130,7 @@ PrimeFaces.widget.DataTable.prototype.setupSelectionEvents = function() {
 
             })
             .live(selectEvent, function(event) {
-                if(this.nodeName == 'TR')
+                if(this.nodeName.toLowerCase() == 'tr')
                     _self.onRowClick(event, this);
                 else
                     _self.onCellClick(event, this);
@@ -286,6 +286,15 @@ PrimeFaces.widget.DataTable.prototype.paginate = function(newState) {
 
         return false;
     };
+    
+    options.oncomplete = function() {
+        if(_self.cfg.behaviors) {
+            var pageBehavior = _self.cfg.behaviors['page'];
+            if(pageBehavior) {
+                pageBehavior.call(_self);
+            }
+        }
+    };
 
     var params = {};
     params[this.id + "_paging"] = true;
@@ -338,6 +347,19 @@ PrimeFaces.widget.DataTable.prototype.sort = function(columnId, asc) {
         }
 
         return false;
+    };
+    
+    options.oncomplete = function() {
+        if(_self.cfg.behaviors) {
+            var sortBehavior = _self.cfg.behaviors['sort'];
+            if(sortBehavior) {
+                var sortBehaviorParams = {};
+                sortBehaviorParams[_self.id + "_sortKey"] = columnId;
+                sortBehaviorParams[_self.id + "_sortDir"] = asc;
+                
+                sortBehavior.call(_self, columnId, sortBehaviorParams);
+            }
+        }
     };
 
     var params = {};
@@ -400,6 +422,15 @@ PrimeFaces.widget.DataTable.prototype.filter = function() {
 
         return false;
     };
+    
+    options.oncomplete = function() {
+        if(_self.cfg.behaviors) {
+            var filterBehavior = _self.cfg.behaviors['filter'];
+            if(filterBehavior) {
+                filterBehavior.call(_self);
+            }
+        }
+    };
 
     var params = {};
     params[this.id + "_filtering"] = true;
@@ -423,7 +454,7 @@ PrimeFaces.widget.DataTable.prototype.onRowClick = function(event, rowElement) {
         var row = $(rowElement);
 
         if(row.hasClass('ui-selected'))
-            this.unselectRow(row);
+           this.unselectRow(row);
         else
            this.selectRow(row);
        
@@ -447,9 +478,7 @@ PrimeFaces.widget.DataTable.prototype.selectRow = function(row) {
     //save state
     this.writeSelections();
 
-    if(this.cfg.instantSelect) {
-        this.fireRowSelectEvent(rowId);
-    }
+    this.fireRowSelectEvent(rowId);
 }
 
 PrimeFaces.widget.DataTable.prototype.unselectRow = function(row) {
@@ -466,58 +495,39 @@ PrimeFaces.widget.DataTable.prototype.unselectRow = function(row) {
     //save state
     this.writeSelections();
 
-    if(this.cfg.instantUnselect) {
-        this.fireRowUnselectEvent(rowId);
-    }
+    this.fireRowUnselectEvent(rowId);
 }
 
 /**
  *  Sends a rowSelectEvent on server side to invoke a rowSelectListener if defined
  */
 PrimeFaces.widget.DataTable.prototype.fireRowSelectEvent = function(rowId) {
-    var options = {
-        source: this.id,
-        process: this.id,
-        formId: this.cfg.formId
-    };
-
-    if(this.cfg.onRowSelectUpdate) {
-        options.update = this.cfg.onRowSelectUpdate;
+    if(this.cfg.behaviors) {
+        var selectBehavior = this.cfg.behaviors['selectRow'];
+        
+        if(selectBehavior) {
+            var params = {};
+            params[this.id + '_instantSelectedRowIndex'] = rowId;
+            
+            selectBehavior.call(this, rowId, params);
+        }
     }
-    
-    if(this.cfg.onRowSelectStart) 
-        options.onstart = this.cfg.onRowSelectStart;
-    if(this.cfg.onRowSelectComplete)
-        options.oncomplete = this.cfg.onRowSelectComplete;
-    
-    var params = {};
-    params[this.id + '_instantSelectedRowIndex'] = rowId;
-
-    options.params = params;
-
-    PrimeFaces.ajax.AjaxRequest(options);
 }
 
 /**
  *  Sends a rowUnselectEvent on server side to invoke a rowUnselectListener if defined
  */
 PrimeFaces.widget.DataTable.prototype.fireRowUnselectEvent = function(rowId) {
-    var options = {
-        source: this.id,
-        process: this.id,
-        formId: this.cfg.formId
-    };
-
-    if(this.cfg.onRowUnselectUpdate) {
-        options.update = this.cfg.onRowUnselectUpdate;
+    if(this.cfg.behaviors) {
+        var unselectBehavior = this.cfg.behaviors['unselectRow'];
+        
+        if(unselectBehavior) {
+            var params = {};
+            params[this.id + '_instantUnselectedRowIndex'] = rowId;
+            
+            unselectBehavior.call(this, rowId, params);
+        }
     }
-
-    var params = {};
-    params[this.id + '_instantUnselectedRowIndex'] = rowId;
-
-    options.params = params;
-
-    PrimeFaces.ajax.AjaxRequest(options);
 }
 
 /**
@@ -919,28 +929,30 @@ PrimeFaces.widget.DataTable.prototype.setupResizableColumns = function() {
     columnHeaders = $(this.jqId + ' thead th'),
     columnFooters = $(this.jqId + ' tfoot tr td'),
     tbody = $(this.tbody),
-    tbodyTop = tbody.offset().top,
-    tbodyLeft = tbody.offset().left,
     headerTable = $(this.jqId + ' .ui-datatable-scrollable-header table'),
     scrollBody = $(this.jqId + ' .ui-datatable-scrollable-body'),
     _self = this;
-
+ 
     //Set height of resizer helper
-    var resizerHelperHeight = this.cfg.scrollable ? $(this.jqId + ' .ui-datatable-scrollable-body').innerHeight() - 1 : $(this.tbody).innerHeight() - 1;
+    var resizerHelperHeight = this.cfg.scrollable ? $(this.jqId + ' .ui-datatable-scrollable-body').innerHeight() - 1 : tbody.innerHeight() - 1;
     resizerHelper.css('height', resizerHelperHeight);
 
     //State cookie
     this.columnWidthsCookie = this.id + '_columnWidths';
-
+    
     //Main resize events
     resizers.draggable({
         axis: 'x',
         start: function(event, ui) {
+            var tbodyOffset = tbody.offset();
+            this.tbodyLeft = tbodyOffset.left;
+            this.tbodyTop = tbodyOffset.top;
+    
             resizerHelper.fadeIn();
         },
         drag: function(event, ui) {
-            if(event.clientX >= tbodyLeft) {
-                resizerHelper.css('top', tbodyTop).css('left', event.clientX);
+            if(event.clientX >= this.tbodyLeft) {
+                resizerHelper.offset({left:ui.helper.offset().left, top:this.tbodyTop});
             }
         },
         stop: function(event, ui) {

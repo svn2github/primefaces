@@ -95,10 +95,6 @@ PrimeFaces.widget.Tree.prototype.expandNode = function(node) {
             formId: this.cfg.formId
         };
 
-        if(this.cfg.hasExpandListener && this.cfg.onExpandUpdate) {
-            options.update = options.update + ' ' + this.cfg.onExpandUpdate;
-        }
-
         options.onsuccess = function(responseXML) {
             var xmlDoc = responseXML.documentElement,
             updates = xmlDoc.getElementsByTagName("update");
@@ -120,9 +116,15 @@ PrimeFaces.widget.Tree.prototype.expandNode = function(node) {
                     PrimeFaces.ajax.AjaxUtils.updateElement(id, content);
                 }
             }
+            
+            PrimeFaces.ajax.AjaxUtils.handleResponse(xmlDoc);
 
             return false;
         };
+        
+        options.oncomplete = function() {
+            _self.fireExpandEvent(node);
+        }
 
         var params = {};
         params[this.id + '_expandNode'] = _self.getNodeId(node);
@@ -134,6 +136,19 @@ PrimeFaces.widget.Tree.prototype.expandNode = function(node) {
     else {
         this.showNodeChildren(node);
         this.saveClientState();
+        this.fireExpandEvent(node);
+    }
+}
+
+PrimeFaces.widget.Tree.prototype.fireExpandEvent = function(node) {
+    if(this.cfg.behaviors) {
+        var expandBehavior = this.cfg.behaviors['expand'];
+        if(expandBehavior) {
+            var params = {};
+            params[this.id + '_expandNode'] = this.getNodeId(node);
+            
+            expandBehavior.call(this, node, params);
+        }
     }
 }
 
@@ -150,19 +165,30 @@ PrimeFaces.widget.Tree.prototype.collapseNode = function(node) {
         nodeIcon.removeClass(iconState.expandedIcon).addClass(iconState.collapsedIcon);
     }
 
-    node.children('.ui-tree-nodes').hide();
+    var childNodeContainer = node.children('.ui-tree-nodes');
+    childNodeContainer.hide();
         
     if(_self.cfg.dynamic) {
         if(!_self.cfg.cache) {
-            $(this).remove();
-
-            if(_self.cfg.hasCollapseListener) {
-                _self.fireNodeCollapseEvent(node);
-            }
+            childNodeContainer.remove();
         }
     }
     else {
         _self.saveClientState();
+    }
+    
+    _self.fireCollapseEvent(node);
+}
+
+PrimeFaces.widget.Tree.prototype.fireCollapseEvent = function(node) {
+    if(this.cfg.behaviors) {
+        var collapseBehavior = this.cfg.behaviors['collapse'];
+        if(collapseBehavior) {
+            var params = {};
+            params[this.id + '_collapseNode'] = this.getNodeId(node);
+            
+            collapseBehavior.call(this, node, params);
+        }
     }
 }
 
@@ -230,9 +256,7 @@ PrimeFaces.widget.Tree.prototype.selectNode = function(node) {
 
     this.writeSelections();
 
-    if(this.cfg.instantSelect) {
-        this.fireNodeSelectEvent(node);
-    }
+    this.fireNodeSelectEvent(node);
 }
 
 PrimeFaces.widget.Tree.prototype.unselectNode = function(node) {
@@ -251,9 +275,7 @@ PrimeFaces.widget.Tree.prototype.unselectNode = function(node) {
 
     this.writeSelections();
 
-    if(this.cfg.instantUnselect) {
-        this.fireNodeUnselectEvent(node);
-    }
+    this.fireNodeUnselectEvent(node);
 }
 
 PrimeFaces.widget.Tree.prototype.writeSelections = function() {    
@@ -261,61 +283,29 @@ PrimeFaces.widget.Tree.prototype.writeSelections = function() {
 }
 
 PrimeFaces.widget.Tree.prototype.fireNodeSelectEvent = function(node) {
-    var options = {
-        source: this.id,
-        formId: this.cfg.formId
-    };
-
-    options.process = this.cfg.onSelectProcess ? this.cfg.onSelectProcess : this.id;
-
-    if(this.cfg.onSelectUpdate) {
-        options.update = this.cfg.onSelectUpdate;
+    if(this.cfg.behaviors) {
+        var selectBehavior = this.cfg.behaviors['select'];
+        
+        if(selectBehavior) {
+            var params = {};
+            params[this.id + '_instantSelection'] = this.getNodeId(node);
+            
+            selectBehavior.call(this, node, params);
+        }
     }
-
-    options.onstart = this.cfg.onSelectStart;
-    options.oncomplete = this.cfg.onSelectComplete;
-
-    var params = {};
-    params[this.id + '_instantSelection'] = this.getNodeId(node);
-
-    options.params = params;
-
-    PrimeFaces.ajax.AjaxRequest(options);
 }
 
 PrimeFaces.widget.Tree.prototype.fireNodeUnselectEvent = function(node) {
-    var options = {
-        source: this.id,
-        process: this.id,
-        formId: this.cfg.formId
-    };
-
-    if(this.cfg.onUnselectUpdate) {
-        options.update = this.cfg.onUnselectUpdate;
+    if(this.cfg.behaviors) {
+        var unselectBehavior = this.cfg.behaviors['unselect'];
+        
+        if(unselectBehavior) {
+            var params = {};
+            params[this.id + '_instantUnselection'] = this.getNodeId(node);
+            
+            unselectBehavior.call(this, node, params);
+        }
     }
-
-    var params = {};
-    params[this.id + '_instantUnselection'] = this.getNodeId(node);
-
-    options.params = params;
-
-    PrimeFaces.ajax.AjaxRequest(options);
-}
-
-PrimeFaces.widget.Tree.prototype.fireNodeCollapseEvent = function(node) {
-    var options = {
-        source: this.id,
-        process: this.id,
-        update: this.cfg.onCollapseUpdate,
-        formId: this.cfg.formId
-    };
-
-    var params = {};
-    params[this.id + '_collapseNode'] = this.getNodeId(node);
-
-    options.params = params;
-
-    PrimeFaces.ajax.AjaxRequest(options);
 }
 
 PrimeFaces.widget.Tree.prototype.getNodeId = function(node) {
@@ -446,28 +436,17 @@ PrimeFaces.widget.Tree.prototype.setupDragDrop = function(draggables, droppables
 }
 
 PrimeFaces.widget.Tree.prototype.fireDragDropEvent = function(draggedNode, newParent) {
-    var options = {
-        source: this.id,
-        process: this.id,
-        formId: this.cfg.formId
-    };
-
-    if(this.cfg.onDragdropUpdate) {
-        options.update = this.cfg.onDragdropUpdate;
+    if(this.cfg.behaviors) {
+        var dndBehavior = this.cfg.behaviors['dragdrop'];
+        
+        if(dndBehavior) {
+            var params = {};
+            params[this.id + '_draggedNode'] = this.getNodeId(draggedNode);
+            params[this.id + '_droppedNode'] = this.getNodeId(newParent);
+            
+            dndBehavior.call(this, draggedNode, params);
+        }
     }
-
-    options.oncomplete = function(xhr, status, args) {
-        draggedNode.hide().fadeIn('fast');
-    }
-
-    var params = {};
-    params[this.id + '_dragdrop'] = true;
-    params[this.id + '_draggedNode'] = this.getNodeId(draggedNode);
-    params[this.id + '_droppedNode'] = this.getNodeId(newParent);
-
-    options.params = params;
-
-    PrimeFaces.ajax.AjaxRequest(options);
 }
 
 PrimeFaces.widget.Tree.prototype.preselectCheckboxPropagation = function() {

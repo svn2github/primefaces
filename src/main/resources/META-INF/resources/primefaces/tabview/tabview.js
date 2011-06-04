@@ -5,11 +5,11 @@ PrimeFaces.widget.TabView = function(id, cfg) {
     this.id = id;
     this.cfg = cfg;
     this.jqId = PrimeFaces.escapeClientId(id);
-    this.jq = jQuery(this.jqId);
-    this.stateHolder = jQuery(this.jqId + '_activeIndex');
+    this.jq = $(this.jqId);
+    this.stateHolder = $(this.jqId + '_activeIndex');
     var _self = this;
 
-    //tab change handler
+    //tab click handler
     this.cfg.select = function(event, ui) {
         _self.onTabSelect(event, ui);
     };
@@ -48,24 +48,22 @@ PrimeFaces.widget.TabView.prototype.onTabSelect = function(event, ui) {
     this.stateHolder.val(ui.index);
 
     if(shouldLoad) {
-        this.loadDynamicTab(panel);
-    }
-    else if(this.cfg.ajaxTabChange) {
-        this.fireAjaxTabChangeEvent(panel);
+        this.loadDynamicTab(event, panel);
+    } else {
+        this.fireTabChangeEvent(event, panel);
     }
 }
 
 /**
  * Loads tab contents with ajax
  */
-PrimeFaces.widget.TabView.prototype.loadDynamicTab = function(panel) {
+PrimeFaces.widget.TabView.prototype.loadDynamicTab = function(event, panel) {
     var _self = this,
     options = {
         source: this.id,
-        process: this.id
+        process: this.id,
+        update: this.id
     };
-
-    options.update = this.cfg.ajaxTabChange ? this.id + ' ' + this.cfg.onTabChangeUpdate : this.id;
 
     options.onsuccess = function(responseXML) {
         var xmlDoc = responseXML.documentElement,
@@ -76,7 +74,7 @@ PrimeFaces.widget.TabView.prototype.loadDynamicTab = function(panel) {
             content = updates[i].firstChild.data;
 
             if(id == _self.id){
-                jQuery(panel).html(content);
+                $(panel).html(content);
 
                 if(_self.cfg.cache) {
                     _self.markAsLoaded(panel);
@@ -86,40 +84,19 @@ PrimeFaces.widget.TabView.prototype.loadDynamicTab = function(panel) {
             else {
                 PrimeFaces.ajax.AjaxUtils.updateElement(id, content);
             }
-
         }
+        
+        PrimeFaces.ajax.AjaxUtils.handleResponse(xmlDoc);
 
         return false;
     };
+    
+    options.oncomplete = function() {
+        _self.fireTabChangeEvent(event, panel);
+    }
 
     var params = {};
     params[this.id + '_contentLoad'] = true;
-    params[this.id + '_newTab'] = panel.id;
-
-    if(this.cfg.ajaxTabChange) {
-        params[this.id + '_tabChange'] = true;
-    }
-
-    options.params = params;
-
-    PrimeFaces.ajax.AjaxRequest(options);
-}
-
-/**
- * Fires an ajax tabChangeEvent if a tabChangeListener is defined on server side
- */
-PrimeFaces.widget.TabView.prototype.fireAjaxTabChangeEvent = function(panel) {
-    var options = {
-        source: this.id,
-        process: this.id
-    };
-
-    if(this.cfg.onTabChangeUpdate) {
-        options.update = this.cfg.onTabChangeUpdate;
-    }
-
-    var params = {};
-    params[this.id + '_tabChange'] = true;
     params[this.id + '_newTab'] = panel.id;
 
     options.params = params;
@@ -128,11 +105,11 @@ PrimeFaces.widget.TabView.prototype.fireAjaxTabChangeEvent = function(panel) {
 }
 
 PrimeFaces.widget.TabView.prototype.markAsLoaded = function(panel) {
-    jQuery(panel).data('loaded', true);
+    $(panel).data('loaded', true);
 }
 
 PrimeFaces.widget.TabView.prototype.isLoaded = function(panel) {
-    return jQuery(panel).data('loaded') == true;
+    return $(panel).data('loaded') == true;
 }
 
 PrimeFaces.widget.TabView.prototype.select = function(index) {
@@ -166,4 +143,16 @@ PrimeFaces.widget.TabView.prototype.getLength = function() {
 
 PrimeFaces.widget.TabView.prototype.getActiveIndex = function() {
     return this.jq.tabs('option', 'selected');
+}
+
+PrimeFaces.widget.TabView.prototype.fireTabChangeEvent = function(event, panel) {
+    if(this.cfg.behaviors) {
+        var tabChangeBehavior = this.cfg.behaviors['tabChange'];
+        if(tabChangeBehavior) {
+            var params = {};
+            params[this.id + '_newTab'] = panel.id;
+
+            tabChangeBehavior.call(this, event, params);
+        }
+    }
 }
