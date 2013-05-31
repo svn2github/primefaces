@@ -46,13 +46,13 @@ public class TreeRenderer extends CoreRenderer {
     @Override
 	public void decode(FacesContext context, UIComponent component) {
         Tree tree = (Tree) component;
-        
-        if(tree.getSelectionMode() != null) {
-            decodeSelection(context, tree);
-        }
-        
+
         if(tree.isDragDropRequest(context)) {
             decodeDragDrop(context, tree);
+        }
+                        
+        if(tree.getSelectionMode() != null) {
+            decodeSelection(context, tree);
         }
         
         decodeBehaviors(context, tree);
@@ -96,24 +96,22 @@ public class TreeRenderer extends CoreRenderer {
     public void decodeDragDrop(FacesContext context, Tree tree) {        
         Map<String,String> params = context.getExternalContext().getRequestParameterMap();
         String clientId = tree.getClientId(context);
-        String dragNodeRowKey = params.get(clientId + "_dragNode");
+        String[] dragNodeRowKeys = params.get(clientId + "_dragNode").split(",");
         String dropNodeRowKey = params.get(clientId + "_dropNode");
         String dragSource = params.get(clientId + "_dragSource");
         int dndIndex = Integer.parseInt(params.get(clientId + "_dndIndex"));
-        TreeNode dragNode, dropNode;
+        TreeNode[] dragNodes;
+        TreeNode dropNode;
         
-        //dragnode
+        
         if(dragSource.equals(clientId)) {
-            tree.setRowKey(dragNodeRowKey);
-            dragNode = tree.getRowNode();
+            dragNodes = findDragNodes(context, tree, dragNodeRowKeys);
         }
         else {
             Tree otherTree = (Tree) tree.findComponent(":" + dragSource);
-            otherTree.setRowKey(dragNodeRowKey);
-            dragNode = otherTree.getRowNode();
+            dragNodes = findDragNodes(context, otherTree, dragNodeRowKeys);
         }
         
-        //dropnode
         if(isValueBlank(dropNodeRowKey)) {
             dropNode = tree.getValue();
         }
@@ -122,10 +120,24 @@ public class TreeRenderer extends CoreRenderer {
             dropNode = tree.getRowNode();
         }
         
-        tree.setDragNode(dragNode);
+        tree.setDragNodes(dragNodes);
         tree.setDropNode(dropNode);
-        dropNode.getChildren().add(dndIndex, dragNode);
-        dragNode.setParent(dropNode);
+        
+        for(int i = 0; i < dragNodes.length; i++) {
+            dragNodes[i].setParent(dropNode);
+            dropNode.getChildren().add((dndIndex + i), dragNodes[i]);
+        }
+    }
+    
+    private TreeNode[] findDragNodes(FacesContext context, Tree tree, String[] keys) {
+        TreeNode[] nodes = new TreeNode[keys.length];
+        
+        for(int i = 0; i < keys.length; i++) {
+            tree.setRowKey(keys[i]);
+            nodes[i] = tree.getRowNode();
+        }
+        
+        return nodes;
     }
 
     @Override
@@ -183,9 +195,12 @@ public class TreeRenderer extends CoreRenderer {
         //selection
         if(selectionMode != null) {
             writer.write(",selectionMode:'" + selectionMode + "'");
-            writer.write(",highlight:" + tree.isHighlight());
             writer.write(",propagateUp:" + tree.isPropagateSelectionUp());
             writer.write(",propagateDown:" + tree.isPropagateSelectionDown());
+        }
+        
+        if(!tree.isHighlight()) {
+            writer.write(",highlight:false");
         }
 
         if(tree.getOnNodeClick() != null) {
@@ -202,6 +217,7 @@ public class TreeRenderer extends CoreRenderer {
         
         if(tree.isDraggable()) {
             writer.write(",draggable:true");
+            writer.write(",dragMode:'" + tree.getDragMode() + "'");
         }
         
         String scope = tree.getDragdropScope();
@@ -485,6 +501,7 @@ public class TreeRenderer extends CoreRenderer {
             containerClass = uiTreeNode.getStyleClass() == null ? containerClass : containerClass + " " + uiTreeNode.getStyleClass();
             
             writer.startElement("li", null);
+                writer.writeAttribute("id", nodeId, null);
                 writer.writeAttribute("data-rowkey", rowKey, null);
                 writer.writeAttribute("data-nodetype", uiTreeNode.getType(), null);
                 writer.writeAttribute("class", containerClass, null);
