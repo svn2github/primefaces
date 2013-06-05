@@ -167,6 +167,11 @@ public class MediaRenderer extends CoreRenderer {
                     src = context.getExternalContext().encodeResourceURL(src);
                 }
             }
+            
+            if(!media.isCache()) {
+                src += src.contains("?") ? "&" : "?";
+                src += Constants.DYNAMIC_CONTENT_NOCACHE_PARAM + "=" + URLEncoder.encode(UUID.randomUUID().toString(), "UTF-8");
+            }
         }
 
 		return src;
