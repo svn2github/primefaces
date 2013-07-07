@@ -24,9 +24,6 @@ import org.primefaces.facelets.MethodRule;
 
 public class TerminalHandler extends ComponentHandler {
 
-	private static final MetaRule COMMAND_HANDLER =
-			new MethodRule("commandHandler", String.class, new Class[]{String.class, String[].class});
-	
 	public TerminalHandler(ComponentConfig config) {
 		super(config);
 	}
@@ -34,8 +31,10 @@ public class TerminalHandler extends ComponentHandler {
 	@SuppressWarnings("unchecked")
 	protected MetaRuleset createMetaRuleset(Class type) { 
 		MetaRuleset metaRuleset = super.createMetaRuleset(type); 
-
-		metaRuleset.addRule(COMMAND_HANDLER);
+		Class[] paramList = new Class[]{String.class, String[].class}; 
+		
+		MetaRule metaRule = new MethodRule("commandHandler", String.class, paramList); 
+		metaRuleset.addRule(metaRule);
 		
 		return metaRuleset; 
 	} 

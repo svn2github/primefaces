@@ -822,8 +822,25 @@ PrimeFaces.widget.SelectOneMenu = PrimeFaces.widget.BaseWidget.extend({
     bindFilterEvents: function() {
         var $this = this;
         
-        this.filterInput.on('keyup.ui-selectonemenu', function() {
-            $this.filter($(this).val());
+        this.filterInput.on('keyup.ui-selectonemenu', function(e) {
+            var keyCode = $.ui.keyCode,
+            key = e.which;
+                        
+            switch(key) {
+                case keyCode.UP:
+                case keyCode.DOWN:
+                case keyCode.LEFT:
+                case keyCode.RIGHT:
+                case keyCode.ENTER:
+                case keyCode.NUMPAD_ENTER:
+                case keyCode.TAB:
+                case keyCode.ESCAPE:
+                break;
+                
+                default:
+                    $this.filter($(this).val());
+                break;
+            }
         })
         .on('keydown.ui-selectonemenu',function(e) {
             var keyCode = $.ui.keyCode,
@@ -1092,6 +1109,8 @@ PrimeFaces.widget.SelectOneMenu = PrimeFaces.widget.BaseWidget.extend({
                     item.hide();   
             }
         }
+        
+        this.highlightItem(this.items.filter(':visible:first'));
         
         if(this.itemsContainer.height() < this.cfg.initialHeight) {
             this.itemsWrapper.css('height', 'auto');
@@ -1483,8 +1502,15 @@ PrimeFaces.widget.SelectListbox = PrimeFaces.widget.BaseWidget.extend({
             if(!item.hasClass('ui-state-highlight')) {
                 item.addClass('ui-state-hover');
             }
-        }).on('mouseout.selectListbox', function() {
+        })
+        .on('mouseout.selectListbox', function() {
             $(this).removeClass('ui-state-hover');
+        })
+        .on('dblclick.selectListbox', function(e) {       
+            $this.input.trigger('dblclick');
+            
+            PrimeFaces.clearSelection();
+            e.preventDefault();
         });
         
         //input
@@ -1492,7 +1518,7 @@ PrimeFaces.widget.SelectListbox = PrimeFaces.widget.BaseWidget.extend({
             $this.jq.addClass('ui-state-focus');
         }).on('blur.selectListbox', function() {
             $this.jq.removeClass('ui-state-focus');
-        })
+        });
     },
     
     unselectAll: function() {
@@ -1521,11 +1547,20 @@ PrimeFaces.widget.SelectOneListbox = PrimeFaces.widget.SelectListbox.extend({
         var $this = this;
         
         this.items.on('click.selectListbox', function(e) {       
-            var item = $(this);
+            var item = $(this),
+            selectedItem = $this.items.filter('.ui-state-highlight');
             
-            $this.unselectAll();
-            $this.selectItem(item);
-            $this.input.change();
+            if(item.index() !== selectedItem.index()) {
+                if(selectedItem.length) {
+                    $this.unselectItem(selectedItem);
+                }
+                
+                $this.selectItem(item);
+                $this.input.change();
+            }
+            
+            $this.input.trigger('click');
+            
             PrimeFaces.clearSelection();
             e.preventDefault();
         });
@@ -1549,8 +1584,10 @@ PrimeFaces.widget.SelectManyMenu = PrimeFaces.widget.SelectListbox.extend({
             }
             
             var item = $(this),
-            metaKey = (e.metaKey||e.ctrlKey);
-            
+            selectedItems = $this.items.filter('.ui-state-highlight'),
+            metaKey = (e.metaKey||e.ctrlKey),
+            unchanged = (!metaKey && selectedItems.length === 1 && selectedItems.index() === item.index());
+
             if(!e.shiftKey) {
                 if(!metaKey) {
                     $this.unselectAll();
@@ -1583,8 +1620,12 @@ PrimeFaces.widget.SelectManyMenu = PrimeFaces.widget.SelectListbox.extend({
                     $this.cursorItem = item;
                 }
             }
+            
+            if(!unchanged) {
+                $this.input.trigger('change');
+            }
 
-            $this.input.change();
+            $this.input.trigger('click');
             PrimeFaces.clearSelection();
             e.preventDefault();
         });
@@ -1610,7 +1651,7 @@ PrimeFaces.widget.SelectManyMenu = PrimeFaces.widget.SelectListbox.extend({
                 else
                     $this.selectItem(item);
                 
-                $this.input.change();
+                $this.input.trigger('change');
             });
         }
     },
@@ -1989,7 +2030,9 @@ PrimeFaces.widget.SelectCheckboxMenu = PrimeFaces.widget.BaseWidget.extend({
     },
     
     bindEvents: function() {
-        var _self = this;
+        var _self = this,
+        hideNS = 'mousedown.' + this.id,
+        resizeNS = 'resize.' + this.id;
         
         //Events for checkboxes
         this.bindCheckboxHover(this.checkboxes);
@@ -2025,7 +2068,7 @@ PrimeFaces.widget.SelectCheckboxMenu = PrimeFaces.widget.BaseWidget.extend({
         //Closer
         this.closer.on('mouseenter.selectCheckboxMenu', function(){
             $(this).addClass('ui-state-hover');
-        }).on('mousekeave.selectCheckboxMenu', function() {
+        }).on('mouseleave.selectCheckboxMenu', function() {
             $(this).removeClass('ui-state-hover');
         }).on('click.selectCheckboxMenu', function(e) {
             _self.hide(true);
@@ -2064,7 +2107,7 @@ PrimeFaces.widget.SelectCheckboxMenu = PrimeFaces.widget.BaseWidget.extend({
         });
 
         //hide overlay when outside is clicked
-        $(document.body).on('mousedown.selectCheckboxMenu', function (e) {        
+        $(document.body).off(hideNS).on(hideNS, function (e) {        
             if(_self.panel.is(':hidden')) {
                 return;
             }
@@ -2087,8 +2130,7 @@ PrimeFaces.widget.SelectCheckboxMenu = PrimeFaces.widget.BaseWidget.extend({
         });
 
         //Realign overlay on resize
-        var resizeNS = 'resize.' + this.id;
-        $(window).unbind(resizeNS).bind(resizeNS, function() {
+        $(window).off(resizeNS).on(resizeNS, function() {
             if(_self.panel.is(':visible')) {
                 _self.alignPanel();
             }

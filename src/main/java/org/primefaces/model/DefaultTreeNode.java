@@ -165,4 +165,12 @@ public class DefaultTreeNode implements TreeNode, Serializable {
 		else
 			return super.toString();
 	}	
+
+    public boolean isPartialSelected() {
+        return false;
+    }
+
+    public void setPartialSelected(boolean value) {
+        //nothing
+    }
 }

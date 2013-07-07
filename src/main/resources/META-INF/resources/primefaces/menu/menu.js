@@ -273,31 +273,32 @@ PrimeFaces.widget.TieredMenu = PrimeFaces.widget.Menu.extend({
 PrimeFaces.widget.Menubar = PrimeFaces.widget.TieredMenu.extend({
     
     showSubmenu: function(menuitem, submenu) {
-        submenu.css('z-index', ++PrimeFaces.zindex);
-
-        if(menuitem.parent().hasClass('ui-menu-child')) {    //submenu menuitem
-            var win = $(window),
-            offset = menuitem.offset(),
-            menuitemTop = offset.top,
-            submenuHeight = submenu.outerHeight(),
-            menuitemHeight = menuitem.outerHeight(),
-            top = (menuitemTop + submenuHeight) > (win.height() + win.scrollTop()) ? (-1 * submenuHeight) + menuitemHeight : 0;  //viewport check
-
-            submenu.css({
-                'left': menuitem.outerWidth(),
-                'top': top,
-                'z-index': ++PrimeFaces.zindex
-            }).show();
+        var win = $(window),
+        submenuOffsetTop = null,
+        submenuCSS = {
+            'z-index': ++PrimeFaces.zindex
+        };
+        
+        if(menuitem.parent().hasClass('ui-menu-child')) {
+            submenuCSS.left = menuitem.outerWidth();
+            submenuCSS.top = 0; 
+            submenuOffsetTop = menuitem.offset().top - win.scrollTop();
         } 
-        else {  
-            submenu.css({                                    //root menuitem         
-                'left': 0
-                ,'top': menuitem.outerHeight()
-            });
-            
+        else {
+            submenuCSS.left = 0;
+            submenuCSS.top = menuitem.outerHeight(); 
+            menuitem.offset().top - win.scrollTop();
+            submenuOffsetTop = menuitem.offset().top + submenuCSS.top - win.scrollTop();
         }
-
-        submenu.show();
+        
+        //adjust height within viewport
+        submenu.css('height', 'auto');
+        if((submenuOffsetTop + submenu.outerHeight()) > win.height()) {
+            submenuCSS.overflow = 'auto';
+            submenuCSS.height = win.height() - (submenuOffsetTop + 20);
+        }
+        
+        submenu.css(submenuCSS).show();
     }
 });
 

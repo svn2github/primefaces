@@ -30,6 +30,7 @@ import org.primefaces.component.api.DynamicColumn;
 import org.primefaces.component.api.UIColumn;
 import org.primefaces.component.column.Column;
 import org.primefaces.component.columngroup.ColumnGroup;
+import org.primefaces.component.columns.Columns;
 import org.primefaces.component.datatable.feature.DataTableFeature;
 import org.primefaces.component.datatable.feature.DataTableFeatureKey;
 import org.primefaces.component.datatable.feature.SortFeature;
@@ -75,17 +76,40 @@ public class DataTableRenderer extends DataRenderer {
             }
         }
         else {
-            if(table.isLazy()) {
-                if(table.isLiveScroll())
-                    table.loadLazyScrollData(0, table.getScrollRows());
-                else
-                    table.loadLazyData();
-            }
-                    
+            preEncode(context, table);
+            
             encodeMarkup(context, table);
             encodeScript(context, table);
         }
 	}
+    
+    protected void preEncode(FacesContext context, DataTable table) {
+        if(table.isLazy()) {
+            if(table.isLiveScroll())
+                table.loadLazyScrollData(0, table.getScrollRows());
+            else
+                table.loadLazyData();
+        }
+        
+        //default sort
+        if(table.getSortBy() != null && !table.isLazy()) {
+            SortFeature sortFeature = (SortFeature) table.getFeature(DataTableFeatureKey.SORT);
+            
+            if(table.isMultiSort())
+                sortFeature.multiSort(context, table);
+            else
+                sortFeature.singleSort(context, table);            
+        }
+
+        if(table.isPaginator()) {
+            table.calculateFirst();
+        }
+        
+        Columns dynamicCols = table.getDynamicColumns();
+        if(dynamicCols != null) {
+            dynamicCols.setRowIndex(-1);
+        }
+    }
 	
 	protected void encodeScript(FacesContext context, DataTable table) throws IOException{
 		ResponseWriter writer = context.getResponseWriter();
@@ -161,22 +185,6 @@ public class DataTableRenderer extends DataRenderer {
         containerClass = table.getStyleClass() != null ? containerClass + " " + table.getStyleClass() : containerClass;
         if(table.isResizableColumns()) containerClass = containerClass + " " + DataTable.RESIZABLE_CONTAINER_CLASS;         
         if(ComponentUtils.isRTL(context, table)) containerClass = containerClass + " " + DataTable.RTL_CLASS;
-        
-        //default sort
-        if(!table.isDefaultSorted() && table.getSortBy() != null && !table.isLazy()) {
-            SortFeature sortFeature = (SortFeature) table.getFeature(DataTableFeatureKey.SORT);
-            
-            if(table.isMultiSort())
-                sortFeature.multiSort(context, table);
-            else
-                sortFeature.singleSort(context, table);
-            
-            table.setDefaultSorted();
-        }
-
-        if(hasPaginator) {
-            table.calculateFirst();
-        }
 
         writer.startElement("div", table);
         writer.writeAttribute("id", clientId, "id");
@@ -240,8 +248,8 @@ public class DataTableRenderer extends DataRenderer {
     }
 
     protected void encodeScrollableTable(FacesContext context, DataTable table) throws IOException {
-        String tableStyle = table.getStyle();
-        String tableStyleClass = table.getStyleClass();
+        String tableStyle = table.getTableStyle();
+        String tableStyleClass = table.getTableStyleClass();
                         
         encodeScrollAreaStart(context, table, DataTable.SCROLLABLE_HEADER_CLASS, DataTable.SCROLLABLE_HEADER_BOX_CLASS, tableStyle, tableStyleClass);
         encodeThead(context, table);
@@ -550,7 +558,7 @@ public class DataTableRenderer extends DataRenderer {
     protected void encodeThead(FacesContext context, DataTable table) throws IOException {
         ResponseWriter writer = context.getResponseWriter();
         ColumnGroup group = table.getColumnGroup("header");
-
+        
         writer.startElement("thead", null);
         writer.writeAttribute("id", table.getClientId(context) + "_head", null);
         

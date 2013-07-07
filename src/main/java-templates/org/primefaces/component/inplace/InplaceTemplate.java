@@ -5,9 +5,11 @@ import java.util.HashMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import javax.faces.component.EditableValueHolder;
 import javax.faces.component.UIComponent;
 import javax.faces.event.FacesEvent;
 import javax.faces.event.AjaxBehaviorEvent;
+import org.primefaces.component.inplace.Inplace;
 import org.primefaces.util.Constants;
 
     public static final String CONTAINER_CLASS = "ui-inplace ui-hidden-container";
@@ -50,9 +52,23 @@ import org.primefaces.util.Constants;
         }
     }
     private boolean isRequestSource(FacesContext context) {
-        return this.getClientId(context).equals(context.getExternalContext().getRequestParameterMap().get(Constants.PARTIAL_SOURCE_PARAM));
+        return this.getClientId(context).equals(context.getExternalContext().getRequestParameterMap().get(Constants.RequestParams.PARTIAL_SOURCE_PARAM));
     }
 
     private boolean isCancelRequest(FacesContext context) {
         return context.getExternalContext().getRequestParameterMap().containsKey(this.getClientId(context) + "_cancel");
+    }
+
+    public boolean isValid() {
+        boolean valid = true;
+        
+        for(Iterator<UIComponent> it = this.getFacetsAndChildren(); it.hasNext();) {
+            UIComponent component = it.next();
+            if(component instanceof EditableValueHolder && !((EditableValueHolder) component).isValid()) {
+                valid = false;
+                break;
+            }
+        }
+        
+        return valid;
     }

@@ -16,74 +16,97 @@
 package org.primefaces.component.terminal;
 
 import java.io.IOException;
-
+import java.util.Arrays;
 import javax.el.MethodExpression;
 import javax.faces.component.UIComponent;
 import javax.faces.context.FacesContext;
 import javax.faces.context.ResponseWriter;
-
 import org.primefaces.renderkit.CoreRenderer;
 import org.primefaces.util.WidgetBuilder;
 
 public class TerminalRenderer extends CoreRenderer {
 
-	@Override
-	public void encodeEnd(FacesContext context, UIComponent component) throws IOException {
-		Terminal terminal = (Terminal) component;
-
-        if(context.getExternalContext().getRequestParameterMap().containsKey(terminal.getClientId(context))) {
-            handleCommand(context, component);
-        } else {
+    @Override
+    public void encodeEnd(FacesContext context, UIComponent component) throws IOException {
+        Terminal terminal = (Terminal) component;
+           
+        if(terminal.isCommandRequest()) {
+            handleCommand(context, terminal);
+        }
+        else {
             encodeMarkup(context, terminal);
             encodeScript(context, terminal);
         }
-	}
+    }
 
-	protected void encodeMarkup(FacesContext context, Terminal terminal) throws IOException {
-		ResponseWriter writer = context.getResponseWriter();
-		String clientId = terminal.getClientId(context);
-		
-		writer.startElement("div", terminal);
-		writer.writeAttribute("id", clientId, "id");
-		writer.endElement("div");
-	}
+    protected void encodeMarkup(FacesContext context, Terminal terminal) throws IOException {
+        ResponseWriter writer = context.getResponseWriter();
+        String clientId = terminal.getClientId(context);
+        String style = terminal.getStyle();
+        String styleClass = terminal.getStyleClass();
+        styleClass = (styleClass == null) ? Terminal.CONTAINER_CLASS : Terminal.CONTAINER_CLASS + " " + styleClass;
+        String welcomeMessage = terminal.getWelcomeMessage();
+        String inputId = clientId + "_input";
+        
+        writer.startElement("div", terminal);
+        writer.writeAttribute("id", clientId, "id");
+        writer.writeAttribute("class", styleClass, "styleClass");
+        if(style != null) {
+            writer.writeAttribute("style", style, "style");
+        }
+        
+        if(welcomeMessage != null) {
+            writer.startElement("div", null);
+            writer.writeText(welcomeMessage, null);
+            writer.endElement("div");
+        }
+        
+        writer.startElement("div", null);
+        writer.writeAttribute("class", Terminal.CONTENT_CLASS, null);
+        writer.endElement("div");
+        
+        writer.startElement("div", null);
+        writer.startElement("span", null);
+        writer.writeAttribute("class", Terminal.PROMPT_CLASS, null);
+        writer.writeText(terminal.getPrompt(), null);
+        writer.endElement("span");
+        
+        writer.startElement("input", null);
+        writer.writeAttribute("id", inputId, null);
+        writer.writeAttribute("name", inputId, null);
+        writer.writeAttribute("type", "text", null);
+        writer.writeAttribute("autocomplete", "off", null);
+        writer.writeAttribute("class", Terminal.INPUT_CLASS, null);
+        writer.endElement("input");
+        
+        writer.endElement("div");
+        writer.endElement("div");
+    }
 
-	protected void encodeScript(FacesContext context, Terminal terminal) throws IOException {
-		ResponseWriter writer = context.getResponseWriter();
-		String clientId = terminal.getClientId(context);
+    protected void encodeScript(FacesContext context, Terminal terminal) throws IOException {
+        ResponseWriter writer = context.getResponseWriter();
+        String clientId = terminal.getClientId(context);
         WidgetBuilder wb = getWidgetBuilder(context);
-        wb.widget("Terminal", terminal.resolveWidgetVar(), clientId, "terminal", true)
-            .attr("PS1", terminal.getPrompt())
-            .attr("WELCOME_MESSAGE", terminal.getWelcomeMessage(), null)
-            .attr("WIDTH", terminal.getWidth())
-            .attr("HEIGHT", terminal.getHeight());
-		
+        wb.widget("Terminal", terminal.resolveWidgetVar(), clientId, false);
+        
         startScript(writer, clientId);
         writer.write(wb.build());
         endScript(writer);
-	}
-
-	protected void handleCommand(FacesContext context, UIComponent component) throws IOException {
+    }
+    
+    protected void handleCommand(FacesContext context, Terminal terminal) throws IOException {
 		ResponseWriter writer = context.getResponseWriter();
-		Terminal terminal = (Terminal) component;
         String clientId = terminal.getClientId(context);
-		String argsParam = context.getExternalContext().getRequestParameterMap().get(clientId + "_args");
-		String tokens[] = argsParam.split(",");
+		String value = context.getExternalContext().getRequestParameterMap().get(clientId + "_input");
+		String tokens[] = value.split(" ");
 		String command = tokens[0];
-		String[] args;
-		if(tokens.length > 1) {
-			args = new String[tokens.length - 1];
-			for (int t = 1; t < tokens.length; t++) {
-				args[t - 1] = tokens[t];
-			}
-		}
-		else {
-			args = new String[0];
-        }
+		String[] args = Arrays.copyOfRange(tokens, 1, tokens.length);
 		
 		MethodExpression commandHandler = terminal.getCommandHandler();
-		String result = (String) commandHandler.invoke (context.getELContext(), new Object[]{command, args});
+		String result = (String) commandHandler.invoke(context.getELContext(), new Object[]{command, args});
 		
 		writer.write(result);
 	}
+    
+    
 }

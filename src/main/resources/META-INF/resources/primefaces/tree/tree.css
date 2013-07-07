@@ -69,6 +69,7 @@
     cursor: pointer;
     width: 15px;
     height: 15px;
+    float: left;
 }
 
 .ui-tree .ui-chkbox {
@@ -177,7 +178,6 @@
 }
 
 .ui-treenode-content.ui-state-hover {
-    border: 0 none;
     font-weight: inherit;
 }
 
