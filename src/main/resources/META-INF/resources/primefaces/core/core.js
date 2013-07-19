@@ -51,6 +51,17 @@
         setCookie : function(name, value) {
             $.cookie(name, value);
         },
+                
+        cookiesEnabled: function() {
+            var cookieEnabled = (navigator.cookieEnabled) ? true : false;
+
+            if(typeof navigator.cookieEnabled === 'undefined' && !cookieEnabled) { 
+                document.cookie="testcookie";
+                cookieEnabled = (document.cookie.indexOf("testcookie") !== -1) ? true : false;
+            }
+            
+            return (cookieEnabled);
+        },
 
         skinInput : function(input) {
             input.hover(
@@ -78,14 +89,14 @@
         skinButton : function(button) {
             button.mouseover(function(){
                 var el = $(this);
-                if(!button.hasClass('ui-state-disabled')) {
+                if(!button.prop('disabled')) {
                     el.addClass('ui-state-hover');
                 }
             }).mouseout(function() {
                 $(this).removeClass('ui-state-active ui-state-hover');
             }).mousedown(function() {
                 var el = $(this);
-                if(!button.hasClass('ui-state-disabled')) {
+                if(!button.prop('disabled')) {
                     el.addClass('ui-state-active').removeClass('ui-state-hover');
                 }
             }).mouseup(function() {
@@ -95,7 +106,7 @@
             }).blur(function() {
                 $(this).removeClass('ui-state-focus ui-state-active');
             }).keydown(function(e) {
-                if(e.keyCode == $.ui.keyCode.SPACE || e.keyCode == $.ui.keyCode.ENTER || e.keyCode == $.ui.keyCode.NUMPAD_ENTER) {
+                if(e.keyCode === $.ui.keyCode.SPACE || e.keyCode === $.ui.keyCode.ENTER || e.keyCode === $.ui.keyCode.NUMPAD_ENTER) {
                     $(this).addClass('ui-state-active');
                 }
             }).keyup(function() {
@@ -103,7 +114,7 @@
             });
 
             //aria
-            button.attr('role', 'button').attr('aria-disabled', button.is(':disabled'));
+            button.attr('role', 'button').attr('aria-disabled', button.prop('disabled'));
 
             return this;
         },
@@ -215,10 +226,10 @@
 
         createWidget : function(widgetConstructor, widgetVar, cfg, resource) {            
             if(PrimeFaces.widget[widgetConstructor]) {
-                if(window[widgetVar])
-                    window[widgetVar].refresh(cfg);                                     //ajax spdate
+                if(PrimeFaces.widgets[widgetVar])
+                    PrimeFaces.widgets[widgetVar].refresh(cfg);                                                    //ajax spdate
                 else
-                    window[widgetVar] = new PrimeFaces.widget[widgetConstructor](cfg);  //page init
+                    PrimeFaces.widgets[widgetVar] = new PrimeFaces.widget[widgetConstructor](cfg);  //page init
             }
             else {
                 var scriptURI = $('script[src*="/javax.faces.resource/primefaces.js"]').attr('src').replace('primefaces.js', resource + '/' + resource + '.js'),
@@ -231,7 +242,7 @@
                 //load script and initialize widget
                 PrimeFaces.getScript(location.protocol + '//' + location.host + scriptURI, function() {
                     setTimeout(function() {
-                        window[widgetVar] = new PrimeFaces.widget[widgetConstructor](cfg);
+                        PrimeFaces.widgets[widgetVar] = new PrimeFaces.widget[widgetConstructor](cfg);
                     }, 100);
                 });
             }
@@ -285,21 +296,23 @@
         },
 
         monitorDownload: function(start, complete) {
-            if(start) {
-                start();
-            }
-
-            window.downloadMonitor = setInterval(function() {
-                var downloadComplete = PrimeFaces.getCookie('primefaces.download');
-
-                if(downloadComplete == 'true') {
-                    if(complete) {
-                        complete();
-                    }
-                    clearInterval(window.downloadPoll);
-                    PrimeFaces.setCookie('primefaces.download', null);
+            if(this.cookiesEnabled()) {
+                if(start) {
+                    start();
                 }
-            }, 500);
+
+                window.downloadMonitor = setInterval(function() {
+                    var downloadComplete = PrimeFaces.getCookie('primefaces.download');
+
+                    if(downloadComplete === 'true') {
+                        if(complete) {
+                            complete();
+                        }
+                        clearInterval(window.downloadMonitor);
+                        PrimeFaces.setCookie('primefaces.download', null);
+                    }
+                }, 250);
+            }
         },
 
         /**
@@ -368,46 +381,62 @@
             var dialogId = cfg.sourceComponentId + '_dlg',
             dialogWidgetVar = cfg.sourceComponentId.replace(/:/g, '_') + '_dlgwidget',
             dialogDOM = $('<div id="' + dialogId + '" class="ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow ui-overlay-hidden"' + 
-                    ' data-dcid="' + cfg.dcid + '" data-dlgwidgetvar="' + dialogWidgetVar + '"/>')
+                    ' data-pfdlgcid="' + cfg.pfdlgcid + '" data-widgetvar="' + dialogWidgetVar + '"/>')
                     .append('<div class="ui-dialog-titlebar ui-widget-header ui-helper-clearfix ui-corner-top"><span class="ui-dialog-title"></span>' +
                     '<a class="ui-dialog-titlebar-icon ui-dialog-titlebar-close ui-corner-all" href="#" role="button"><span class="ui-icon ui-icon-closethick"></span></a></div>' + 
                     '<div class="ui-dialog-content ui-widget-content" style="height: auto;">' +
-                    '<iframe name="' + cfg.name + '" style="border:0 none;width:640px;height:480px;"/>' + 
+                    '<iframe style="border:0 none"/>' + 
                     '</div>')
                     .appendTo(document.body),
             dialogFrame = dialogDOM.find('iframe'),
-            frameURL = cfg.url + '?dcid=' + cfg.dcid;
+            symbol = cfg.url.indexOf('?') === -1 ? '?' : '&',
+            frameURL = cfg.url + symbol + 'pfdlgcid=' + cfg.pfdlgcid,
+            frameWidth = cfg.options.contentWidth||640,
+            frameHeight = cfg.options.contentHeight||480;
+    
+            dialogFrame.css({
+               width: frameWidth + 'px',
+               height: frameHeight + 'px'
+            });
     
             dialogFrame.on('load', function() {
                 var $frame = $(this),
                 titleElement = $frame.contents().find('title');
                 
-                PrimeFaces.cw('Dialog', dialogWidgetVar, {
-                    id: dialogId,
-                    position: 'center',
-                    sourceComponentId: cfg.sourceComponentId,
-                    sourceWidget: cfg.sourceWidget,
-                    onHide: function() {
-                        this.jq.remove();
-                        window[dialogWidgetVar] = undefined;
-                    },
-                    modal: (cfg.modal === 'true')
-                });
-                
-                if(titleElement.length > 0) {
-                    window[dialogWidgetVar].titlebar.children('span.ui-dialog-title').html(titleElement.text());
+                if(!$frame.data('initialized')) {
+                    PrimeFaces.cw('Dialog', dialogWidgetVar, {
+                        id: dialogId,
+                        position: 'center',
+                        sourceComponentId: cfg.sourceComponentId,
+                        sourceWidget: cfg.sourceWidget,
+                        onHide: function() {
+                            this.jq.remove();
+                            window[dialogWidgetVar] = undefined;
+                        },
+                        modal: cfg.options.modal,
+                        resizable: cfg.options.resizable,
+                        draggable: cfg.options.draggable,
+                        width: cfg.options.width,
+                        height: cfg.options.height
+                    });
                 }
                 
-                window[dialogWidgetVar].show();
+                if(titleElement.length > 0) {
+                    PF(dialogWidgetVar).titlebar.children('span.ui-dialog-title').html(titleElement.text());
+                }
+                
+                PF(dialogWidgetVar).show();
+                
+                dialogFrame.data('initialized', true);
             })
             .attr('src', frameURL);
         },
 
-        hideDialog: function(cfg) {
+        closeDialog: function(cfg) {
             var dlg = $(parent.document.body).children('div.ui-dialog').filter(function() {
-                return $(this).data('dcid') === cfg.dcid;
+                return $(this).data('pfdlgcid') === cfg.pfdlgcid;
             }),
-            dlgWidget = parent[dlg.data('dlgwidgetvar')],
+            dlgWidget = parent.PF(dlg.data('widgetvar')),
             sourceWidget = dlgWidget.cfg.sourceWidget;
 
             dlgWidget.hide();
@@ -419,12 +448,47 @@
                 if(dialogReturnBehavior) {
                     var ext = {
                             params: [
-                                {name: dlgWidget.cfg.sourceComponentId + '_dcid', value: cfg.dcid}
+                                {name: dlgWidget.cfg.sourceComponentId + '_pfdlgcid', value: cfg.pfdlgcid}
                             ]
                         };
 
                     dialogReturnBehavior.call(this, null, ext);
                 }
+            }
+        },
+                
+        showMessageInDialog: function(msg) {
+            if(!this.messageDialog) {
+                var messageDialogDOM = $('<div id="primefacesmessagedlg" class="ui-message-dialog ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow ui-overlay-hidden"/>')
+                            .append('<div class="ui-dialog-titlebar ui-widget-header ui-helper-clearfix ui-corner-top"><span class="ui-dialog-title"></span>' +
+                            '<a class="ui-dialog-titlebar-icon ui-dialog-titlebar-close ui-corner-all" href="#" role="button"><span class="ui-icon ui-icon-closethick"></span></a></div>' + 
+                            '<div class="ui-dialog-content ui-widget-content" style="height: auto;"></div>')
+                            .appendTo(document.body);
+
+                PrimeFaces.cw('Dialog', 'primefacesmessagedialog', {
+                    id: 'primefacesmessagedlg', 
+                    modal:true,
+                    draggable: false, 
+                    resizable: false,
+                    showEffect: 'fade',
+                    hideEffect: 'fade'
+                });
+                this.messageDialog = PF('primefacesmessagedialog');
+                this.messageDialog.titleContainer = this.messageDialog.titlebar.children('span.ui-dialog-title');
+            }
+
+            this.messageDialog.titleContainer.text(msg.summary);
+            this.messageDialog.content.html('').append('<span class="ui-dialog-message ui-messages-' + msg.severity.split(' ')[0].toLowerCase() + '-icon" />').append(msg.detail);
+            this.messageDialog.show();
+        },
+                
+        confirm: function(msg) {
+            if(PrimeFaces.confirmDialog) {
+                PrimeFaces.confirmSource = $(PrimeFaces.escapeClientId(msg.source));
+                PrimeFaces.confirmDialog.showMessage(msg);
+            }
+            else {
+                PrimeFaces.warn('No global confirmation dialog available.');
             }
         },
 
@@ -443,6 +507,10 @@
         BEHAVIOR_EVENT_PARAM : "javax.faces.behavior.event",
 
         PARTIAL_EVENT_PARAM : "javax.faces.partial.event",
+        
+        RESET_VALUES_PARAM : "primefaces.resetvalues",
+        
+        IGNORE_AUTO_UPDATE_PARAM : "primefaces.ignoreautoupdate",
 
         VIEW_STATE : "javax.faces.ViewState",
 
@@ -451,11 +519,147 @@
         CLIENT_ID_DATA : "primefaces.clientid"
     };
 
+    PrimeFaces.Expressions = {
+
+    	resolveComponentsAsSelector: function(expressions) {
+
+            var splittedExpressions = PrimeFaces.Expressions.splitExpressions(expressions);
+            var elements = $();
+
+            if (splittedExpressions) {
+                for (var i = 0; i < splittedExpressions.length; ++i) {
+                    var expression =  $.trim(splittedExpressions[i]);
+                    if (expression.length > 0) {
+
+                    	// skip unresolvable keywords
+                    	if (expression == '@none' || expression == '@all') {
+                    		continue;
+                    	}
+                    	
+                        // just a id
+                        if (expression.indexOf("@") == -1) {
+                        	elements = elements.add(
+                            		$(document.getElementById(expression)));
+                        }
+                        // @widget
+                        else if (expression.indexOf("@widgetVar(") == 0) {
+                            var widgetVar = expression.substring(11, expression.length - 1);
+                            var widget = PrimeFaces.widgets[widgetVar];
+
+                            if (widget) {
+                            	elements = elements.add(
+                                		$(document.getElementById(widget.id)));
+                            } else {
+                                PrimeFaces.error("Widget for widgetVar \"" + widgetVar + "\" not avaiable");
+                            }
+                        }
+                        // PFS
+                        else if (expression.indexOf("@(") == 0) {
+                            //converts pfs to jq selector e.g. @(div.mystyle :input) to div.mystyle :input
+							elements = elements.add(
+                        			$(expression.substring(2, expression.length - 1)));
+                        }
+                    }
+                }
+            }
+
+            return elements;
+    	},
+
+        resolveComponents: function(expressions) {
+            var splittedExpressions = PrimeFaces.Expressions.splitExpressions(expressions);
+            var ids = [];
+            
+            if (splittedExpressions) {
+                for (var i = 0; i < splittedExpressions.length; ++i) {
+                    var expression =  $.trim(splittedExpressions[i]);
+                    if (expression.length > 0) {
+
+                        // just a id or passtrough keywords
+                        if (expression.indexOf("@") == -1 || expression == '@none' || expression == '@all') {
+                            if (!PrimeFaces.inArray(ids, expression)) {
+                                ids.push(expression);
+                            }
+                        }
+                        // @widget
+                        else if (expression.indexOf("@widgetVar(") == 0) {
+                            var widgetVar = expression.substring(11, expression.length - 1);
+                            var widget = PrimeFaces.widgets[widgetVar];
+
+                            if (widget) {
+                                if (!PrimeFaces.inArray(ids, widget.id)) {
+                                    ids.push(widget.id);
+                                }
+                            } else {
+                                PrimeFaces.error("Widget for widgetVar \"" + widgetVar + "\" not avaiable");
+                            }
+                        }
+                        // PFS
+                        else if (expression.indexOf("@(") == 0) {
+                            //converts pfs to jq selector e.g. @(div.mystyle :input) to div.mystyle :input
+                            var elements = $(expression.substring(2, expression.length - 1));
+
+                            for (var i = 0; i < elements.length; i++) {
+                                var element = $(elements[i]);
+                                var clientId = element.data(PrimeFaces.CLIENT_ID_DATA) || element.attr('id');
+
+                                if (!PrimeFaces.inArray(ids, clientId)) {
+                                    ids.push(clientId);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return ids;
+        },
+        
+        splitExpressions: function(value) {
+
+    		var expressions = [];
+    		var buffer = '';
+
+    		var parenthesesCounter = 0;
+
+    		for (var i = 0; i < value.length; i++) {
+    			var c = value[i];
+
+    			if (c == '(') {
+    				parenthesesCounter++;
+    			}
+
+    			if (c == ')') {
+    				parenthesesCounter--;
+    			}
+
+    			if ((c == ' ' || c == ',') && parenthesesCounter == 0) {
+					// lets add token inside buffer to our tokens
+    				expressions.push(buffer);
+					// now we need to clear buffer
+    				buffer = '';
+    			} else {
+    				buffer += c;
+    			}
+    		}
+
+    		// lets not forget about part after the separator
+    		expressions.push(buffer);
+
+    		return expressions;
+        }	
+    };
+    
     /**
      * PrimeFaces Namespaces
      */
     PrimeFaces.ajax = {};
     PrimeFaces.widget = {};
+    PrimeFaces.widgets = {};
+    
+    PF = function(widgetVar) {
+        return PrimeFaces.widgets[widgetVar];
+    };
 
     PrimeFaces.ajax.AjaxUtils = {
 
@@ -480,17 +684,19 @@
                 }
                 else
                 {
-                    form.append('<input type="hidden" name="javax.faces.ViewState" id="javax.faces.ViewState" value="' + viewstateValue + '" autocomplete="off" />');
+                    form.append('<input type="hidden" name="javax.faces.ViewState" value="' + viewstateValue + '" autocomplete="off" />');
                 }
             });
         },
 
         updateElement: function(id, content) {        
-            if(id == PrimeFaces.VIEW_STATE) {
+            if(id.indexOf(PrimeFaces.VIEW_STATE) !== -1) {
                 PrimeFaces.ajax.AjaxUtils.updateState.call(this, content);
             }
-            else if(id == PrimeFaces.VIEW_ROOT) {
+            else if(id === PrimeFaces.VIEW_ROOT) {
+            	$.ajaxSetup({'cache' : true});
                 $('head').html(content.substring(content.indexOf("<head>") + 6, content.lastIndexOf("</head>")));
+                $.ajaxSetup({'cache' : false});
                 $('body').html(content.substring(content.indexOf("<body>") + 6, content.lastIndexOf("</body>")));
             }
             else {
@@ -520,46 +726,22 @@
             }
         },
 
-        findComponents: function(selector) {
-            //converts pfs to jq selector e.g. @(div.mystyle :input) to div.mystyle :input
-            var jqSelector = selector.substring(2, selector.length - 1),
-            components = $(jqSelector),
-            ids = [];
+        /**
+         * Type: update/process
+         */
+        resolveComponentsForAjaxCall: function(cfg, type) {
 
-            components.each(function() {
-                var element = $(this),
-                clientId = element.data(PrimeFaces.CLIENT_ID_DATA)||element.attr('id');
-
-                ids.push(clientId);
-            });
-
-            return ids;
-        },
-
-        idsToArray: function(cfg, type, selector) {
-            var arr = [],
-            def = cfg[type],
-            ext = cfg.ext ? cfg.ext[type] : null;
-
-            if(def) {
-                $.merge(arr, def.split(' '));
+            var expressions = '';
+            
+            if (cfg[type]) {
+                expressions += cfg[type];
             }
 
-            if(ext) {
-                var extArr = ext.split(' ');
-
-                for(var i = 0; i < extArr.length; i++) {
-                    if(!PrimeFaces.inArray(arr, extArr[i])) {
-                        arr.push(extArr[i]);
-                    }
-                }
+            if (cfg.ext && cfg.ext[type]) {
+                expressions += " " + cfg.ext[type];
             }
-
-            if(selector) {
-                $.merge(arr, PrimeFaces.ajax.AjaxUtils.findComponents(selector));
-            }
-
-            return arr;
+            
+            return PrimeFaces.Expressions.resolveComponents(expressions);
         },
 
         send: function(cfg) {
@@ -627,17 +809,41 @@
                 name:PrimeFaces.PARTIAL_SOURCE_PARAM, 
                 value:sourceId
             });
+            
+            //resetValues
+            if (cfg.resetValues) {
+                postParams.push({
+                    name:PrimeFaces.RESET_VALUES_PARAM, 
+                    value:true
+                });
+            }
 
+            //ignoreAutoUpdate
+            if (cfg.ignoreAutoUpdate) {
+                postParams.push({
+                    name:PrimeFaces.IGNORE_AUTO_UPDATE_PARAM, 
+                    value:true
+                });
+            }
+            
             //process
-            var processArray = PrimeFaces.ajax.AjaxUtils.idsToArray(cfg, 'process', cfg.processSelector),
-            processIds = processArray.length > 0 ? processArray.join(' ') : '@all';
-            postParams.push({
-                name:PrimeFaces.PARTIAL_PROCESS_PARAM, 
-                value:processIds
-            });
+            var processArray = PrimeFaces.ajax.AjaxUtils.resolveComponentsForAjaxCall(cfg, 'process');
+            if(cfg.fragmentId) {
+                processArray.push(cfg.fragmentId);
+            }
+            var processIds = processArray.length > 0 ? processArray.join(' ') : '@all';
+            if (processIds != '@none') {
+	            postParams.push({
+	                name:PrimeFaces.PARTIAL_PROCESS_PARAM, 
+	                value:processIds
+	            });
+            }
 
             //update
-            var updateArray = PrimeFaces.ajax.AjaxUtils.idsToArray(cfg, 'update', cfg.updateSelector);
+            var updateArray = PrimeFaces.ajax.AjaxUtils.resolveComponentsForAjaxCall(cfg, 'update');
+            if(cfg.fragmentId && cfg.fragmentUpdate) {
+                updateArray.push(cfg.fragmentId);
+            }
             if(updateArray.length > 0) {
                 postParams.push({
                     name:PrimeFaces.PARTIAL_UPDATE_PARAM, 
@@ -683,15 +889,13 @@
             * Only add params of process components and their children 
             * if partial submit is enabled and there are components to process partially
             */
-            if(cfg.partialSubmit && processIds != '@all') {
-                var hasViewstate = false;
+            if(cfg.partialSubmit && processIds.indexOf('@all') == -1) {
+            	var hasViewstate = false;
 
-                if(processIds != '@none') {
-                    var processIdsArray = processIds.split(' ');
-
-                    $.each(processIdsArray, function(i, item) {
-                        var jqProcess = $(PrimeFaces.escapeClientId(item)),
-                        componentPostParams = null;
+                if(processIds.indexOf('@none') == -1) {
+                	for (var i = 0; i < processArray.length; i++) {
+                        var jqProcess = $(PrimeFaces.escapeClientId(processArray[i]));
+                        var componentPostParams = null;
 
                         if(jqProcess.is('form')) {
                             componentPostParams = jqProcess.serializeArray();
@@ -705,7 +909,7 @@
                         }
 
                         $.merge(postParams, componentPostParams);
-                    });
+                    }
                 }
 
                 //add viewstate if necessary
@@ -930,7 +1134,7 @@
         init: function(cfg) {
             this.cfg = cfg;
             this.id = cfg.id;
-            this.jqId = PrimeFaces.escapeClientId(this.id),
+            this.jqId = PrimeFaces.escapeClientId(this.id);
             this.jq = $(this.jqId);
 
             //remove script tag

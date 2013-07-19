@@ -36,7 +36,6 @@ public class DefaultMenuItem implements MenuItem, UIOutcomeTarget, AjaxSource, S
     private boolean ajax = true;
     private Object value;
     private String outcome;
-    private String href;
     private boolean includeViewParams;
     private String fragment;
     private Map<String, List<String>> params;
@@ -52,6 +51,9 @@ public class DefaultMenuItem implements MenuItem, UIOutcomeTarget, AjaxSource, S
     private boolean global;
     private boolean async;
     private boolean partialSubmitSet;
+    private boolean resetValues;
+    private boolean resetValuesSet;
+    private boolean ignoreAutoUpdate;
     
     public DefaultMenuItem() {}
     
@@ -269,6 +271,15 @@ public class DefaultMenuItem implements MenuItem, UIOutcomeTarget, AjaxSource, S
         this.partialSubmitSet = true;
     }
 
+    public boolean isResetValues() {
+        return resetValues;
+    }
+
+    public void setResetValues(boolean resetValues) {
+        this.resetValues = resetValues;
+        this.resetValuesSet = true;
+    }
+    
     public boolean isGlobal() {
         return global;
     }
@@ -287,5 +298,21 @@ public class DefaultMenuItem implements MenuItem, UIOutcomeTarget, AjaxSource, S
 
     public boolean isPartialSubmitSet() {
         return partialSubmitSet;
+    }
+    
+    public boolean isResetValuesSet() {
+        return resetValuesSet;
+    }
+    
+    public boolean isIgnoreAutoUpdate() {
+        return ignoreAutoUpdate;
+    }
+
+    public void setIgnoreAutoUpdate(boolean ignoreAutoUpdate) {
+        this.ignoreAutoUpdate = ignoreAutoUpdate;
+    }
+
+    public boolean isAjaxified() {
+        return getUrl() == null && isAjax();
     }
 }

@@ -17,21 +17,18 @@ package org.primefaces.util;
 
 import java.util.Iterator;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import javax.faces.component.UIComponent;
 import javax.faces.component.UIParameter;
 import javax.faces.context.FacesContext;
 
 import org.primefaces.config.ConfigContainer;
 import org.primefaces.context.RequestContext;
+import org.primefaces.expression.SearchExpressionFacade;
 
 /**
  * Helper to generate javascript code of an ajax call
  */
 public class AjaxRequestBuilder {
-
-	private static final Pattern ID_PATTERN = Pattern.compile("@\\(.+\\)\\s*");
 	
     protected StringBuilder buffer;
     protected FacesContext context;
@@ -65,26 +62,6 @@ public class AjaxRequestBuilder {
         return this;
     }
     
-    private String[] parseIds(String ids) {
-        Matcher m = ID_PATTERN.matcher(ids);
-        String selector, regular;
-        
-        if(m.find()) {
-            selector = m.group().trim();
-            regular = m.replaceAll("");
-        }
-        else {
-            selector = null;
-            regular = ids;
-        }
-        
-        if(isValueBlank(regular)) {
-            regular = null;
-        }
-        
-        return new String[]{regular, selector};
-    }
-    
     private boolean isValueBlank(String value) {
 		if(value == null)
 			return true;
@@ -92,29 +69,22 @@ public class AjaxRequestBuilder {
 		return value.trim().equals("");
 	}
     
-    public AjaxRequestBuilder process(UIComponent component, String ids) {        
-        addIds(component, ids, "process", "processSelector");
+    public AjaxRequestBuilder process(UIComponent component, String expressions) {        
+        addExpressions(component, expressions, "process");
         
         return this;
     }
     
-    public AjaxRequestBuilder update(UIComponent component, String ids) {        
-        addIds(component, ids, "update", "updateSelector");
+    public AjaxRequestBuilder update(UIComponent component, String expressions) {        
+        addExpressions(component, expressions, "update");
         
         return this;
     }
     
-    private AjaxRequestBuilder addIds(UIComponent component, String ids, String key, String keySel) {        
-        if(!isValueBlank(ids)) {
-            String[] parsed = parseIds(ids);
-            String regular = parsed[0];
-            String selector = parsed[1];
-            
-            if(regular != null)
-                buffer.append(",").append(key).append(":'").append(ComponentUtils.findClientIds(context, component, regular)).append("'");
-            
-            if(selector != null)
-                buffer.append(",").append(keySel).append(":'").append(selector).append("'");
+    private AjaxRequestBuilder addExpressions(UIComponent component, String expressions, String key) {        
+        if(!isValueBlank(expressions)) {
+        	String resolvedExpressions = SearchExpressionFacade.resolveComponentsForClient(context, component, expressions, true);
+            buffer.append(",").append(key).append(":'").append(resolvedExpressions).append("'");
         }
         
         return this;
@@ -141,7 +111,15 @@ public class AjaxRequestBuilder {
         
         return this;
     }
-    
+
+    public AjaxRequestBuilder ignoreAutoUpdate(boolean ignoreAutoUpdate) {
+        if(ignoreAutoUpdate) {
+            buffer.append(",ignoreAutoUpdate:true");
+        }
+        
+        return this;
+    }
+
     public AjaxRequestBuilder partialSubmit(boolean value, boolean partialSubmitSet) {
         ConfigContainer config = RequestContext.getCurrentInstance().getApplicationContext().getConfig();
     	
@@ -150,6 +128,19 @@ public class AjaxRequestBuilder {
         
         if(partialSubmit) {
             buffer.append(",partialSubmit:true");
+        }
+        
+        return this;
+    }
+    
+    public AjaxRequestBuilder resetValues(boolean value, boolean resetValuesSet) {
+        ConfigContainer config = RequestContext.getCurrentInstance().getApplicationContext().getConfig();
+    	
+    	//component can override global setting
+        boolean resetValues = resetValuesSet ? value : config.isResetValuesEnabled();
+        
+        if(resetValues) {
+            buffer.append(",resetValues:true");
         }
         
         return this;
@@ -250,6 +241,8 @@ public class AjaxRequestBuilder {
     }
       
     public String build() {
+        addFragmentConfig();
+        
         buffer.append("});");
         
         if(preventDefault) {
@@ -264,6 +257,8 @@ public class AjaxRequestBuilder {
     }
     
     public String buildBehavior() {
+        addFragmentConfig();
+        
         buffer.append("}, arguments[1]);");
         
         if(preventDefault) {
@@ -280,5 +275,16 @@ public class AjaxRequestBuilder {
     public void reset() {
         buffer.setLength(0);
         preventDefault = false;
+    }
+    
+    private void addFragmentConfig() {
+        Map<Object,Object> attrs = RequestContext.getCurrentInstance().getAttributes();
+        Object fragmentId = attrs.get(Constants.FRAGMENT_ID);
+        if(fragmentId != null) {
+            buffer.append(",fragmentId:'").append(fragmentId).append("'");
+            
+            if(attrs.containsKey(Constants.FRAGMENT_AUTO_RENDERED))
+                buffer.append(",fragmentUpdate:true");
+        }
     }
 }

@@ -26,6 +26,7 @@ import javax.faces.component.UIComponent;
 import javax.faces.context.FacesContext;
 import javax.faces.context.ResponseWriter;
 
+import org.primefaces.expression.SearchExpressionFacade;
 import org.primefaces.renderkit.CoreRenderer;
 
 public class FocusRenderer extends CoreRenderer {
@@ -63,11 +64,9 @@ public class FocusRenderer extends CoreRenderer {
 
 	protected void encodeExplicitFocus(FacesContext context, Focus focus) throws IOException {
 		ResponseWriter writer = context.getResponseWriter();
-		UIComponent forComponent = focus.findComponent(focus.getFor());
-		
-		if(forComponent == null) {
-			throw new FacesException("Cannot find component '" + focus.getFor() + "' in view.");
-		}
+		UIComponent forComponent = SearchExpressionFacade.resolveComponent(
+				context, focus, focus.getFor());
+
 		String clientId = forComponent.getClientId(context);
 		
 		writer.write("$(function(){");
@@ -85,13 +84,10 @@ public class FocusRenderer extends CoreRenderer {
             writer.write("PrimeFaces.focus('" + invalidClientId +"');");
 		}
         else if(focus.getContext() != null) {		
-            UIComponent focusContext = focus.findComponent(focus.getContext());
+            UIComponent focusContext = SearchExpressionFacade.resolveComponent(
+            		context, focus, focus.getContext());
 
-            if(focusContext == null)
-                throw new FacesException("Cannot find component " + focus.getContext() + " in view");
-            else {
-                writer.write("PrimeFaces.focus(null, '" + focusContext.getClientId(context) +"');");
-            }
+            writer.write("PrimeFaces.focus(null, '" + focusContext.getClientId(context) +"');");
 		} 
         else {
             writer.write("PrimeFaces.focus();");

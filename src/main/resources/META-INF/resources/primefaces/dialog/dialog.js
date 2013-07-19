@@ -48,7 +48,10 @@ PrimeFaces.widget.Dialog = PrimeFaces.widget.BaseWidget.extend({
             this.syncWindowResize();
         }
 
-        if(this.cfg.appendToBody){
+        if(this.cfg.appendTo) {
+        	this.jq.appendTo(PrimeFaces.Expressions.resolveComponentsAsSelector(this.cfg.appendTo));
+        }
+        else if(this.cfg.appendToBody) {
             this.jq.appendTo('body');
         }
 
@@ -78,7 +81,13 @@ PrimeFaces.widget.Dialog = PrimeFaces.widget.BaseWidget.extend({
         
         $(document).off('keydown.dialog_' + cfg.id);
         
-        if(cfg.appendToBody) {
+        if(cfg.appendTo) {
+            var jqs = $(this.jqId);
+            if(jqs.length > 1) {
+            	PrimeFaces.Expressions.resolveComponentsAsSelector(cfg.appendTo).children(this.jqId).remove();
+            }
+        }
+        else if(cfg.appendToBody) {
             var jqs = $(this.jqId);
             if(jqs.length > 1) {
                 $(document.body).children(this.jqId).remove();
@@ -222,7 +231,7 @@ PrimeFaces.widget.Dialog = PrimeFaces.widget.BaseWidget.extend({
     
     applyFocus: function() {
         if(this.cfg.focus)
-           $(PrimeFaces.escapeClientId(this.cfg.focus)).focus();
+        	PrimeFaces.Expressions.resolveComponentsAsSelector(this.cfg.focus).focus();
         else
             this.jq.find(':not(:submit):not(:button):input:visible:enabled:first').focus();
     },
@@ -552,17 +561,58 @@ PrimeFaces.widget.Dialog = PrimeFaces.widget.BaseWidget.extend({
  * PrimeFaces ConfirmDialog Widget
  */
 PrimeFaces.widget.ConfirmDialog = PrimeFaces.widget.Dialog.extend({
-    
+
     init: function(cfg) {
         cfg.draggable = false;
         cfg.resizable = false;
         cfg.modal = true;
-                
+        cfg.appendToBody = cfg.appendToBody||cfg.global;
+
         this._super(cfg);
+        
+        this.title = this.titlebar.children('.ui-dialog-title');
+        this.message = this.content.children('.ui-confirm-dialog-message');
+        this.icon = this.content.children('.ui-confirm-dialog-severity');
+
+        if(this.cfg.global) {
+            PrimeFaces.confirmDialog = this;
+
+            this.jq.find('.ui-confirmdialog-yes').on('click.ui-confirmdialog', function(e) {                
+                if(PrimeFaces.confirmSource) {
+                    var fn = eval('(function(){' + PrimeFaces.confirmSource.data('pfconfirmcommand') + '})');
+                    
+                    fn.call(PrimeFaces.confirmSource);
+                    PrimeFaces.confirmDialog.hide();
+                    PrimeFaces.confirmSource = null;
+                }
+                
+                e.preventDefault();
+            });
+
+            this.jq.find('.ui-confirmdialog-no').on('click.ui-confirmdialog', function(e) {
+                PrimeFaces.confirmDialog.hide();
+                PrimeFaces.confirmSource = null;
+                
+                e.preventDefault();
+            });
+        }
     },
-    
+
     applyFocus: function() {
         this.jq.find(':button,:submit').filter(':visible:enabled').eq(0).focus();
+    },
+            
+    showMessage: function(msg) {
+        if(msg.header)
+            this.title.text(msg.header);
+        
+        if(msg.message)
+            this.message.text(msg.message);
+        
+        if(msg.icon)
+            this.icon.removeClass().addClass('ui-icon ui-confirm-dialog-severity ' + msg.icon);
+        
+        this.show();
     }
 
 });

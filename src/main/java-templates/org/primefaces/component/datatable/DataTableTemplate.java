@@ -201,7 +201,7 @@ import org.primefaces.component.datatable.feature.*;
         if(isRequestSource(context) && event instanceof AjaxBehaviorEvent) {
             setRowIndex(-1);
             Map<String,String> params = context.getExternalContext().getRequestParameterMap();
-            String eventName = params.get(Constants.PARTIAL_BEHAVIOR_EVENT_PARAM);
+            String eventName = params.get(Constants.RequestParams.PARTIAL_BEHAVIOR_EVENT_PARAM);
             String clientId = this.getClientId(context);
             FacesEvent wrapperEvent = null;
 
@@ -569,7 +569,7 @@ import org.primefaces.component.datatable.feature.*;
     }
 
     public boolean isRequestSource(FacesContext context) {
-        String partialSource = context.getExternalContext().getRequestParameterMap().get(Constants.PARTIAL_SOURCE_PARAM);
+        String partialSource = context.getExternalContext().getRequestParameterMap().get(Constants.RequestParams.PARTIAL_SOURCE_PARAM);
 
         return partialSource != null && this.getClientId(context).equals(partialSource);
     }
@@ -629,7 +629,7 @@ import org.primefaces.component.datatable.feature.*;
 
     private List<Object> selectedRowKeys = new ArrayList<Object>();
 
-    void findSelectedRowKeys() {
+    protected void findSelectedRowKeys() {
         Object selection = this.getSelection();
         selectedRowKeys = new ArrayList<Object>();
         boolean hasRowKeyVe = this.getValueExpression("rowKey") != null;
@@ -658,7 +658,7 @@ import org.primefaces.component.datatable.feature.*;
         }
     }
     
-    void addToSelectedRowKeys(Object object, Map<String,Object> map, String var, boolean hasRowKey) {
+    protected void addToSelectedRowKeys(Object object, Map<String,Object> map, String var, boolean hasRowKey) {
         if(hasRowKey) {
             map.put(var, object);
             this.selectedRowKeys.add(this.getRowKey());
@@ -668,11 +668,11 @@ import org.primefaces.component.datatable.feature.*;
         }
     }
 
-    List<Object> getSelectedRowKeys() {
+    protected List<Object> getSelectedRowKeys() {
         return selectedRowKeys;
     }
 
-    String getSelectedRowKeysAsString() {
+    protected String getSelectedRowKeysAsString() {
         StringBuilder builder = new StringBuilder();
         for(Iterator<Object> iter = getSelectedRowKeys().iterator(); iter.hasNext();) {
             builder.append(iter.next());
@@ -805,15 +805,6 @@ import org.primefaces.component.datatable.feature.*;
         this.multiSortMeta = value;
     }
     
-    public boolean isDefaultSorted() {
-        Object value = getStateHelper().get("defaultSorted");
-
-        return value == null ? false : true;
-	}
-	public void setDefaultSorted() {
-		getStateHelper().put("defaultSorted", true);
-	}
-    
     public boolean isRTL() {
         return this.getDir().equalsIgnoreCase("rtl");
     }
@@ -835,3 +826,46 @@ import org.primefaces.component.datatable.feature.*;
     protected boolean requiresColumns() {
         return true;
     }
+    
+    private Columns dynamicColumns;
+    
+    public void setDynamicColumns(Columns value) {
+        this.dynamicColumns = value;
+    }
+    public Columns getDynamicColumns() {
+        return dynamicColumns;
+    }
+    
+    @Override
+    protected void processChildrenFacets(FacesContext context, PhaseId phaseId) {        
+        for(UIComponent child : this.getChildren()) {
+            if(child.isRendered() && (child.getFacetCount() > 0)) {
+                if(child instanceof Column) {
+                    for(UIComponent facet : child.getFacets().values()) {
+                        process(context, facet, phaseId);
+                    }
+                } 
+                else if(child instanceof Columns) {
+                    Columns uicolumns = (Columns) child;
+                    int f = uicolumns.getFirst();
+                    int r = uicolumns.getRows();
+                    int l = (r == 0) ? uicolumns.getRowCount() : (f + r);
+                            
+                    for(int i = f; i < l; i++) {
+                        uicolumns.setRowIndex(i);
+                        
+                        if(!uicolumns.isRowAvailable()) {
+                            break;
+                        }
+                        
+                        for(UIComponent facet : child.getFacets().values()) {
+                            process(context, facet, phaseId);
+                        }
+                    }
+                    
+                    uicolumns.setRowIndex(-1);
+                }
+            }
+        }
+    }
+    

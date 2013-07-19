@@ -31,6 +31,7 @@ import org.primefaces.component.api.DynamicColumn;
 import org.primefaces.component.api.UIColumn;
 import org.primefaces.component.datatable.DataTable;
 import org.primefaces.component.datatable.DataTableRenderer;
+import org.primefaces.context.RequestContext;
 import org.primefaces.model.BeanPropertyComparator;
 import org.primefaces.model.ChainedBeanPropertyComparator;
 import org.primefaces.model.SortMeta;
@@ -69,6 +70,9 @@ public class SortFeature implements DataTableFeature {
         }
         else {
             UIColumn sortColumn = table.findColumn(sortKey);
+            if(sortColumn.isDynamic()) {
+                ((DynamicColumn) sortColumn).applyStatelessModel();
+            }
             table.setSortBy(sortColumn.getSortBy());
             table.setSortFunction(sortColumn.getSortFunction());
             table.setSortOrder(sortDir);            
@@ -87,6 +91,14 @@ public class SortFeature implements DataTableFeature {
             } 
             else {
                 singleSort(context, table);
+            }
+            
+            if(table.isPaginator()) {
+                RequestContext requestContext = RequestContext.getCurrentInstance();
+
+                if(requestContext != null) {
+                    requestContext.addCallbackParam("totalRecords", table.getRowCount());
+                }
             }
         }
    

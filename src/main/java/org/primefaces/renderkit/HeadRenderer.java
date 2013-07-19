@@ -27,6 +27,8 @@ import javax.faces.component.UIViewRoot;
 import javax.faces.context.FacesContext;
 import javax.faces.context.ResponseWriter;
 import javax.faces.render.Renderer;
+
+import org.primefaces.context.RequestContext;
 import org.primefaces.util.Constants;
 
 /**
@@ -51,8 +53,8 @@ public class HeadRenderer extends Renderer {
         }
         
         //Theme
-        String theme = null;
-        String themeParamValue = context.getExternalContext().getInitParameter(Constants.THEME_PARAM);
+        String theme;
+        String themeParamValue = RequestContext.getCurrentInstance().getApplicationContext().getConfig().getTheme();
 
         if(themeParamValue != null) {
             ELContext elContext = context.getELContext();
@@ -67,6 +69,12 @@ public class HeadRenderer extends Renderer {
 
         if(theme != null && !theme.equals("none")) {
             encodeTheme(context, "primefaces-" + theme, "theme.css");
+        }
+        
+        //Middle facet
+        UIComponent middle = component.getFacet("middle");
+        if(middle != null) {
+            middle.encodeAll(context);
         }
         
         //Registered Resources

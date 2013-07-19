@@ -13,13 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.primefaces.component.api;
+package org.primefaces.model;
 
-import java.io.IOException;
+import javax.faces.model.SelectItem;
 
-import javax.faces.context.FacesContext;
-
-public interface AjaxComponent {
-
-	public void encodePartially(FacesContext facesContext) throws IOException;
+public class NestedSelectItem extends SelectItem {
+    
 }

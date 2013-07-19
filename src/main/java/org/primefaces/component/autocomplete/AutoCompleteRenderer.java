@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
+import javax.faces.application.ProjectStage;
 import javax.faces.component.UIComponent;
 import javax.faces.context.FacesContext;
 import javax.faces.context.ResponseWriter;
@@ -37,6 +39,8 @@ import org.primefaces.util.WidgetBuilder;
 
 public class AutoCompleteRenderer extends InputRenderer {
 
+	private static final Logger LOG = Logger.getLogger(AutoCompleteRenderer.class.getName());
+	
     @Override
     public void decode(FacesContext context, UIComponent component) {
         AutoComplete ac = (AutoComplete) component;
@@ -353,6 +357,12 @@ public class AutoCompleteRenderer extends InputRenderer {
         if(disabled) {
             writer.writeAttribute("disabled", "disabled", "disabled");
         }
+        
+        if(ac.getMaxlength() != Integer.MIN_VALUE)
+        {
+            writer.writeAttribute("maxlength", ""+ac.getMaxlength(),null);
+        }
+        
         writer.endElement("input");
         writer.endElement("li");
         
@@ -512,14 +522,21 @@ public class AutoCompleteRenderer extends InputRenderer {
         String clientId = ac.getClientId(context);
         WidgetBuilder wb = getWidgetBuilder(context);
         wb.widget("AutoComplete", ac.resolveWidgetVar(), clientId, true);
+
+        if (context.isProjectStage(ProjectStage.Development)) {
+	        if (ac.getAttributes().containsKey("process")
+	        		|| ac.getAttributes().containsKey("global")
+	        		|| ac.getAttributes().containsKey("onstart")
+	        		|| ac.getAttributes().containsKey("oncomplete")) {
+	        	LOG.warning("The process/global/onstart/oncomplete attribute of AutoComplete was removed. Please use p:ajax with the query event now");
+	        }
+        }
         
         wb.attr("minLength", ac.getMinQueryLength(), 1)
             .attr("delay", ac.getQueryDelay(), 300)
             .attr("forceSelection", ac.isForceSelection(), false)
-            .attr("global", ac.isGlobal(), true)
             .attr("scrollHeight", ac.getScrollHeight(), Integer.MAX_VALUE)
-            .attr("multiple", ac.isMultiple(), false)
-            .attr("process", ac.getProcess(), null);
+            .attr("multiple", ac.isMultiple(), false);
         
         if(ac.isCache()) {
             wb.attr("cache", true).attr("cacheTimeout", ac.getCacheTimeout());            
@@ -541,9 +558,6 @@ public class AutoCompleteRenderer extends InputRenderer {
                 .attr("itemtipMyPosition", ac.getItemtipMyPosition(), null)
                 .attr("itemtipAtPosition", ac.getItemtipAtPosition(), null);
         }
-        
-        wb.callback("onstart", "function(request)", ac.getOnstart())
-            .callback("oncomplete", "function(response)", ac.getOncomplete());
         
         encodeClientBehaviors(context, ac, wb);
 

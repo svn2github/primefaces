@@ -21,7 +21,6 @@ import java.util.logging.Logger;
 import javax.faces.component.UIInput;
 import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
-import javax.faces.validator.BeanValidator;
 import javax.validation.Validation;
 
 import org.primefaces.util.Constants;
@@ -32,42 +31,58 @@ import org.primefaces.util.Constants;
 public class ConfigContainer {
 
 	private static final Logger LOG = Logger.getLogger(ConfigContainer.class.getName());
-	
+
 	// context params
 	private boolean validateEmptyFields = false;
 	private boolean beanValidationAvailable = false;
 	private boolean partialSubmitEnabled = false;
+	private boolean resetValuesEnabled = false;
 	private boolean interpretEmptyStringAsNull = false;
 	private boolean rightToLeft = false;
 	private String  secretKey = null;
-	
+	private String  pushServerURL = null;
+	private String  theme = null;
+
 	// internal config
 	private boolean stringConverterAvailable = false;
+	private boolean jsf22 = false;
 
 	public ConfigContainer(FacesContext context) {
-		initContextParams(context);
-        
-        stringConverterAvailable = null != context.getApplication().createConverter(String.class);
+		initConfig(context);
+		initConfigFromContextParams(context);
 	}
 
-	private void initContextParams(FacesContext context) {
+	private void initConfig(FacesContext context) {
+		beanValidationAvailable = checkIfBeanValidationIsAvailable();
+		
+		jsf22 = detectJSF22();
+		
+		stringConverterAvailable = null != context.getApplication().createConverter(String.class);
+	}
+	
+	private void initConfigFromContextParams(FacesContext context) {
 		ExternalContext externalContext = context.getExternalContext();
 
         String value = null;
 
-        value = externalContext.getInitParameter(Constants.INTERPRET_EMPTY_STRING_AS_NULL);
+        value = externalContext.getInitParameter(Constants.ContextParams.INTERPRET_EMPTY_STRING_AS_NULL);
         interpretEmptyStringAsNull = (value == null) ? false : Boolean.valueOf(value);
 
-        value = externalContext.getInitParameter(Constants.DIRECTION_PARAM);
+        value = externalContext.getInitParameter(Constants.ContextParams.DIRECTION);
         rightToLeft = (value == null) ? false : value.equalsIgnoreCase("rtl");
 
-        value = externalContext.getInitParameter(Constants.SUBMIT_PARAM);
+        value = externalContext.getInitParameter(Constants.ContextParams.SUBMIT);
         partialSubmitEnabled = (value == null) ? false : value.equalsIgnoreCase("partial");
+        
+        value = externalContext.getInitParameter(Constants.ContextParams.RESET_VALUES);
+        resetValuesEnabled = (value == null) ? false : Boolean.valueOf(value);
 
-        value = externalContext.getInitParameter(Constants.SECRET_KEY);
+        value = externalContext.getInitParameter(Constants.ContextParams.SECRET_KEY);
         secretKey = (value == null) ? "primefaces" : value;
         
-        beanValidationAvailable = checkIfBeanValidationIsAvailable();
+        pushServerURL = externalContext.getInitParameter(Constants.ContextParams.PUSH_SERVER_URL);
+        
+        theme = externalContext.getInitParameter(Constants.ContextParams.THEME);
 
         value = externalContext.getInitParameter(UIInput.VALIDATE_EMPTY_FIELDS_PARAM_NAME);
         if (null == value) {
@@ -79,7 +94,7 @@ public class ConfigContainer {
         	validateEmptyFields = Boolean.valueOf(value);
         }
 	}
-	
+
     private boolean checkIfBeanValidationIsAvailable() {
     	boolean available = false;
 
@@ -104,7 +119,25 @@ public class ConfigContainer {
 
         return available;
     }
-	
+    
+    private boolean detectJSF22() {
+        String version = FacesContext.class.getPackage().getImplementationVersion();
+        
+        if(version != null) {
+            return version.startsWith("2.2");
+        }
+        else {
+            //fallback
+            try {
+                Class.forName("javax.faces.flow.Flow");
+                return true;
+            } 
+            catch (ClassNotFoundException ex) {
+                return false;
+            }
+        }
+    }
+
 	public boolean isValidateEmptyFields() {
 		return validateEmptyFields;
 	}
@@ -134,8 +167,19 @@ public class ConfigContainer {
         return secretKey;
     }
 
-    public void setSecretKey(String secretKey) {
-        this.secretKey = secretKey;
+    public boolean isAtLeastJSF22() {
+        return jsf22;
     }
     
+    public boolean isResetValuesEnabled() {
+    	return resetValuesEnabled;
+    }
+
+    public String getPushServerURL() {
+        return pushServerURL;
+    }
+
+    public String getTheme() {
+        return theme;
+    }
 }

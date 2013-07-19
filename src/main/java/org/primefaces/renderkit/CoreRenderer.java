@@ -36,14 +36,17 @@ import javax.faces.render.Renderer;
 import org.primefaces.component.api.AjaxSource;
 import org.primefaces.context.RequestContext;
 import org.primefaces.util.AjaxRequestBuilder;
+import org.primefaces.util.ComponentUtils;
 import org.primefaces.util.WidgetBuilder;
 
 public abstract class CoreRenderer extends Renderer {
 	
 	protected void renderChildren(FacesContext context, UIComponent component) throws IOException {
-		for (Iterator<UIComponent> iterator = component.getChildren().iterator(); iterator.hasNext();) {
-			UIComponent child = (UIComponent) iterator.next();
-			renderChild(context, child);
+		if (component.getChildCount() > 0) {
+			for (int i = 0; i < component.getChildCount(); i++) {
+				UIComponent child = (UIComponent) component.getChildren().get(i);
+				renderChild(context, child);
+			}
 		}
 	}
 
@@ -106,17 +109,24 @@ public abstract class CoreRenderer extends Renderer {
 	protected void renderPassThruAttributes(FacesContext context, UIComponent component, String[] attrs) throws IOException {
 		ResponseWriter writer = context.getResponseWriter();
 		
+        //pre-defined attributes
 		for(String attribute : attrs) {
 			Object value = component.getAttributes().get(attribute);
 			
 			if(shouldRenderAttribute(value))
 				writer.writeAttribute(attribute, value.toString(), attribute);
 		}
+        
+        //dynamic attributes       
+        if(RequestContext.getCurrentInstance().getApplicationContext().getConfig().isAtLeastJSF22()) {
+            RendererUtils.renderPassThroughAttributes(context, component);
+        }
 	}
 	
 	protected void renderPassThruAttributes(FacesContext context, UIComponent component, String[] attrs, String[] ignoredAttrs) throws IOException {
 		ResponseWriter writer = context.getResponseWriter();
 		
+        //pre-defined attributes
 		for(String attribute : attrs) {
 			if(isIgnoredAttribute(attribute, ignoredAttrs)) {
 				continue;
@@ -127,6 +137,11 @@ public abstract class CoreRenderer extends Renderer {
 			if(shouldRenderAttribute(value))
 				writer.writeAttribute(attribute, value.toString(), attribute);
 		}
+        
+        //dynamic attributes       
+        if(RequestContext.getCurrentInstance().getApplicationContext().getConfig().isAtLeastJSF22()) {
+            RendererUtils.renderPassThroughAttributes(context, component);
+        }
 	}
 	
 	private boolean isIgnoredAttribute(String attribute, String[] ignoredAttrs) {
@@ -171,23 +186,9 @@ public abstract class CoreRenderer extends Renderer {
         
     	return context.getRenderKit().getResponseStateManager().isPostback(context);
     }
-   
-    public String getEscapedClientId(String clientId){
-    	return "#" + clientId.replaceAll(":", "\\\\\\\\:");
-    }
-    
-    public boolean isValueEmpty(String value) {
-		if (value == null || "".equals(value))
-			return true;
-		
-		return false;
-	}
 	
 	public boolean isValueBlank(String value) {
-		if(value == null)
-			return true;
-		
-		return value.trim().equals("");
+		return ComponentUtils.isValueBlank(value);
 	}
     	    
     protected String buildAjaxRequest(FacesContext context, AjaxSource source, UIComponent form) {
@@ -203,6 +204,8 @@ public abstract class CoreRenderer extends Renderer {
                 .async(source.isAsync())
                 .global(source.isGlobal())
                 .partialSubmit(source.isPartialSubmit(), source.isPartialSubmitSet())
+                .resetValues(source.isResetValues(), source.isResetValuesSet())
+                .ignoreAutoUpdate(source.isIgnoreAutoUpdate())
                 .onstart(source.getOnstart())
                 .onerror(source.getOnerror())
                 .onsuccess(source.getOnsuccess())
@@ -287,8 +290,10 @@ public abstract class CoreRenderer extends Renderer {
                 writer.write(domEvent + ":");
 
                 writer.write("function(event) {");
-                for(Iterator<ClientBehavior> behaviorIter = behaviorEvents.get(event).iterator(); behaviorIter.hasNext();) {
-                    ClientBehavior behavior = behaviorIter.next();
+                
+                List<ClientBehavior> behaviorsByEvent = behaviorEvents.get(event);
+                for (int i = 0; i < behaviorsByEvent.size(); i++) {
+                    ClientBehavior behavior = behaviorsByEvent.get(i);
                     ClientBehaviorContext cbc = ClientBehaviorContext.createClientBehaviorContext(context, (UIComponent) component, event, clientId, params);
                     String script = behavior.getScript(cbc);    //could be null if disabled
 
@@ -332,8 +337,9 @@ public abstract class CoreRenderer extends Renderer {
                 wb.append(domEvent).append(":");
 
                 wb.append("function(event) {");
-                for(Iterator<ClientBehavior> behaviorIter = behaviorEvents.get(event).iterator(); behaviorIter.hasNext();) {
-                    ClientBehavior behavior = behaviorIter.next();
+                List<ClientBehavior> behaviorsByEvent = behaviorEvents.get(event);
+                for (int i = 0; i < behaviorsByEvent.size(); i++) {
+                    ClientBehavior behavior = behaviorsByEvent.get(i);
                     ClientBehaviorContext cbc = ClientBehaviorContext.createClientBehaviorContext(context, (UIComponent) component, event, clientId, params);
                     String script = behavior.getScript(cbc);    //could be null if disabled
 
@@ -452,17 +458,17 @@ public abstract class CoreRenderer extends Renderer {
     }
     
     protected String getOnclickBehaviors(FacesContext context, ClientBehaviorHolder cbh) {
-        List<ClientBehavior> behaviors = cbh.getClientBehaviors().get("action");
+        List<ClientBehavior> behaviors = cbh.getClientBehaviors().get("click");
         StringBuilder sb = new StringBuilder();
         
         if(behaviors != null && !behaviors.isEmpty()) {
             UIComponent component = (UIComponent) cbh;
             String clientId = component.getClientId(context);
             List<ClientBehaviorContext.Parameter> params = Collections.emptyList();
-            
-            for(Iterator<ClientBehavior> behaviorIter = behaviors.iterator(); behaviorIter.hasNext();) {
-                ClientBehavior behavior = behaviorIter.next();
-                ClientBehaviorContext cbc = ClientBehaviorContext.createClientBehaviorContext(context, component, "action", clientId, params);
+
+            for (int i = 0; i < behaviors.size(); i++) {
+                ClientBehavior behavior = behaviors.get(i);
+                ClientBehaviorContext cbc = ClientBehaviorContext.createClientBehaviorContext(context, component, "click", clientId, params);
                 String script = behavior.getScript(cbc);
 
                 if(script != null)

@@ -6,15 +6,15 @@
 <component>
 	<tag>terminal</tag>
 	<tagClass>org.primefaces.component.terminal.TerminalTag</tagClass>
-	<componentHandlerClass>org.primefaces.component.terminal.TerminalHandler</componentHandlerClass>
+    <componentHandlerClass>org.primefaces.component.terminal.TerminalHandler</componentHandlerClass>
 	<componentClass>org.primefaces.component.terminal.Terminal</componentClass>
 	<componentType>org.primefaces.component.Terminal</componentType>
 	<componentFamily>org.primefaces.component</componentFamily>
 	<rendererType>org.primefaces.component.TerminalRenderer</rendererType>
 	<rendererClass>org.primefaces.component.terminal.TerminalRenderer</rendererClass>
-	<parent>javax.faces.component.UIComponentBase</parent>
-    <description>Terminal is an ajax powered web based terminal that brings desktop terminals to JSF.</description>
-     <interfaces>
+	<parent>javax.faces.component.UIPanel</parent>
+    <description>Terminal is an ajax powered component bringing desktop command-line tools to the web.</description>
+    <interfaces>
 		<interface>
 			<name>org.primefaces.component.api.Widget</name>
 		</interface>
@@ -23,49 +23,54 @@
 		&standard_uicomponent_attributes;
 		&widget_var_attribute;
 		<attribute>
-			<name>width</name>
+			<name>style</name>
 			<required>false</required>
 			<type>java.lang.String</type>
-            <description>Width of the terminal.</description>
+            <description>Inline style of the component.</description>
 		</attribute>
 		<attribute>
-			<name>height</name>
+			<name>styleClass</name>
 			<required>false</required>
 			<type>java.lang.String</type>
-            <description>Height of the terminal.</description>
+            <description>Style class of the component.</description>
 		</attribute>
-		<attribute>
+        <attribute>
 			<name>welcomeMessage</name>
 			<required>false</required>
 			<type>java.lang.String</type>
             <description>Welcome message to be displayed on initial load.</description>
 		</attribute>
-		<attribute>
+        <attribute>
 			<name>prompt</name>
 			<required>false</required>
 			<type>java.lang.String</type>
-			<defaultValue>prime $</defaultValue>
-            <description>Primary prompt text. Default is "prime $"</description>
+            <defaultValue>prime $</defaultValue>
+            <description>Primary prompt text.</description>
 		</attribute>
-		<attribute>
+        <attribute>
 			<name>commandHandler</name>
 			<required>false</required>
 			<type>javax.el.MethodExpression</type>
-			<method-signature>java.lang.String commandHandler(java.lang.String, java.lang.String[])</method-signature>
-            <description>Method to be called with arguments to process.</description>
+            <description>Method to execute by passing command and the arguments.</description>
 		</attribute>
 	</attributes>
 	<resources>
         <resource>
 			<name>terminal/terminal.css</name>
 		</resource>
+        <resource>
+			<name>primefaces.css</name>
+		</resource>
 		<resource>
 			<name>jquery/jquery.js</name>
+		</resource>
+        <resource>
+			<name>jquery/jquery-plugins.js</name>
 		</resource>
 		<resource>
 			<name>primefaces.js</name>
 		</resource>
-		<resource>
+        <resource>
 			<name>terminal/terminal.js</name>
 		</resource>
 	</resources>

@@ -28,6 +28,7 @@ import javax.faces.event.ActionEvent;
 import javax.faces.event.ActionListener;
 
 import org.primefaces.component.datatable.DataTable;
+import org.primefaces.expression.SearchExpressionFacade;
 
 public class DataExporter implements ActionListener, StateHolder {
 
@@ -86,10 +87,7 @@ public class DataExporter implements ActionListener, StateHolder {
 		try {
 			Exporter exporter = ExporterFactory.getExporterForType(exportAs);
             
-			UIComponent component = event.getComponent().findComponent(tableId);
-			if(component == null) {
-				throw new FacesException("Cannot find component \"" + tableId + "\" in view.");
-            }
+			UIComponent component = SearchExpressionFacade.resolveComponent(context, event.getComponent(), tableId);
             
 			if(!(component instanceof DataTable)) {
 				throw new FacesException("Unsupported datasource target:\"" + component.getClass().getName() + "\", exporter must target a PrimeFaces DataTable.");

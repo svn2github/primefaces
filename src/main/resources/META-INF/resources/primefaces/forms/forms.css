@@ -15,20 +15,25 @@
     resize:none;
 }
 
-.ui-selectonelistbox, .ui-selectmanymenu {
+.ui-selectonelistbox, 
+.ui-selectmanymenu,
+.ui-multiselectlistbox-listcontainer {
     overflow:auto;
     padding:2px;
-    width: 125px;
+    width:125px;
 }
 
-.ui-selectonelistbox .ui-selectlistbox-list, .ui-selectmanymenu .ui-selectlistbox-list {
+.ui-selectonelistbox .ui-selectlistbox-list,
+.ui-selectmanymenu .ui-selectlistbox-list,
+.ui-multiselectlistbox .ui-multiselectlistbox-list {
     list-style-type: none; 
     margin: 0;
     padding: 0;
 }
 
 .ui-selectonelistbox .ui-selectlistbox-item,
-.ui-selectmanymenu .ui-selectlistbox-item {
+.ui-selectmanymenu .ui-selectlistbox-item,
+.ui-multiselectlistbox .ui-multiselectlistbox-item {
     margin:2px;
     border:0 none;
     cursor: pointer;
@@ -36,9 +41,22 @@
 }
 
 .ui-selectonelistbox table.ui-selectlistbox-list,
-.ui-selectmanymenu table.ui-selectlistbox-list{
+.ui-selectmanymenu table.ui-selectlistbox-list {
     border-collapse:collapse;
     width:100%;
+}
+
+.ui-multiselectlistbox .ui-multiselectlistbox-listcontainer {
+    float: left;
+    margin-right: 4px;
+}
+
+.ui-multiselectlistbox .ui-multiselectlistbox-item {
+    white-space: nowrap;
+}
+
+.ui-multiselectlistbox.ui-state-disabled .ui-multiselectlistbox-item {
+    cursor: default;
 }
 
 /**
@@ -245,20 +263,20 @@
 }
 
 .ui-button-text-only .ui-button-text { 
-    padding: .4em 1em; 
+    padding: .3em 1em; 
 }
 
 .ui-button-icon-only .ui-button-text { 
-    padding: .4em; 
+    padding: .3em; 
     text-indent: -9999999px; 
 }
 
 .ui-button-text-icon-left .ui-button-text { 
-    padding: .4em 1em .4em 2.1em; 
+    padding: .3em 1em .3em 2.1em; 
 }
 
 .ui-button-text-icon-right .ui-button-text { 
-    padding: .4em 2.1em .4em 1em; 
+    padding: .3em 2.1em .3em 1em; 
 }
 
 /*button icon element(s) */

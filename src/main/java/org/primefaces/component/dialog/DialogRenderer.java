@@ -16,18 +16,21 @@
 package org.primefaces.component.dialog;
 
 import java.io.IOException;
-import javax.faces.FacesException;
+import java.util.logging.Logger;
 
 import javax.faces.component.UIComponent;
 import javax.faces.context.FacesContext;
 import javax.faces.context.ResponseWriter;
 
+import org.primefaces.expression.SearchExpressionFacade;
 import org.primefaces.renderkit.CoreRenderer;
 import org.primefaces.util.ComponentUtils;
 import org.primefaces.util.WidgetBuilder;
 
 public class DialogRenderer extends CoreRenderer {
 
+	private static final Logger LOG = Logger.getLogger(DialogRenderer.class.getName());
+	
     @Override
     public void decode(FacesContext context, UIComponent component) {
         super.decodeBehaviors(context, component);
@@ -51,6 +54,10 @@ public class DialogRenderer extends CoreRenderer {
         String clientId = dialog.getClientId(context);
         WidgetBuilder wb = getWidgetBuilder(context);
         wb.widget("Dialog", dialog.resolveWidgetVar(), clientId, true);
+
+        if (dialog.isAppendToBody()) {
+        	LOG.warning("The appendToBody attribute of the Dialog will be deprecated in future versions. Please use appendTo=\"@(body)\" now");
+        }
         
         wb.attr("visible", dialog.isVisible(), false)
             .attr("draggable", dialog.isDraggable(), true)
@@ -61,6 +68,7 @@ public class DialogRenderer extends CoreRenderer {
             .attr("minWidth", dialog.getMinWidth(), Integer.MIN_VALUE)
             .attr("minHeight", dialog.getMinHeight(), Integer.MIN_VALUE)
             .attr("appendToBody", dialog.isAppendToBody(), false)
+            .attr("appendTo", SearchExpressionFacade.resolveComponentForClient(context, dialog, dialog.getAppendTo()), null)
             .attr("dynamic", dialog.isDynamic(), false)
             .attr("showEffect", dialog.getShowEffect(), null)
             .attr("hideEffect", dialog.getHideEffect(), null)
@@ -69,14 +77,10 @@ public class DialogRenderer extends CoreRenderer {
             .callback("onHide", "function()", dialog.getOnHide())
             .callback("onShow", "function()", dialog.getOnShow());
         
-        String focusId = dialog.getFocus();
-        if(focusId != null) {
-            UIComponent focusComponent = dialog.findComponent(focusId);
-
-            if(focusComponent == null)
-                throw new FacesException("Cannot find component with identifier \"" + focusId + "\" referenced from \"" + dialog.getClientId(context) + "\".");
-            else
-                wb.attr("focus", focusComponent.getClientId(context));
+        String focusExpressions = SearchExpressionFacade.resolveComponentsForClient(
+        		context, dialog, dialog.getFocus());
+        if (focusExpressions != null) {
+        	wb.attr("focus", focusExpressions);
         }
 
         encodeClientBehaviors(context, dialog, wb);

@@ -29,6 +29,7 @@ import org.primefaces.component.api.AjaxSource;
 import org.primefaces.component.api.UIOutcomeTarget;
 import org.primefaces.context.RequestContext;
 import org.primefaces.event.MenuActionEvent;
+import org.primefaces.expression.SearchExpressionFacade;
 import org.primefaces.model.menu.MenuElement;
 import org.primefaces.model.menu.MenuItem;
 import org.primefaces.model.menu.MenuModel;
@@ -211,11 +212,11 @@ public abstract class BaseMenuRenderer extends OutcomeTargetRenderer {
             .attr("my", menu.getMy())
             .attr("at", menu.getAt());
         
-        UIComponent trigger = ((UIComponent) menu).findComponent(menu.getTrigger());
-        String triggerClientId = trigger == null ? menu.getTrigger() : trigger.getClientId(context);
-
-        wb.attr("trigger", triggerClientId)
-            .attr("triggerEvent", menu.getTriggerEvent());
+        String trigger = menu.getTrigger();
+        if (trigger != null) {
+            wb.attr("trigger", SearchExpressionFacade.resolveComponentsForClient(context, (UIComponent) menu, trigger))
+                .attr("triggerEvent", menu.getTriggerEvent());
+        }
     }
  
     @Override
@@ -240,6 +241,8 @@ public abstract class BaseMenuRenderer extends OutcomeTargetRenderer {
                 .async(source.isAsync())
                 .global(source.isGlobal())
                 .partialSubmit(source.isPartialSubmit(), source.isPartialSubmitSet())
+                .resetValues(source.isResetValues(), source.isResetValuesSet())
+                .ignoreAutoUpdate(source.isIgnoreAutoUpdate())
                 .onstart(source.getOnstart())
                 .onerror(source.getOnerror())
                 .onsuccess(source.getOnsuccess())

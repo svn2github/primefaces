@@ -18,7 +18,7 @@ import javax.faces.context.FacesContext;
 import javax.faces.event.PhaseId;
 import org.primefaces.component.panel.Panel;
 
-	public static final String PANEL_CLASS = "ui-panel ui-widget ui-widget-content ui-corner-all ui-hidden-container";
+	public static final String PANEL_CLASS = "ui-panel ui-widget ui-widget-content ui-corner-all";
 	public static final String PANEL_TITLEBAR_CLASS = "ui-panel-titlebar ui-widget-header ui-helper-clearfix ui-corner-all";
 	public static final String PANEL_TITLE_CLASS = "ui-panel-title";
 	public static final String PANEL_TITLE_ICON_CLASS = "ui-panel-titlebar-icon ui-corner-all ui-state-default";
@@ -48,7 +48,7 @@ import org.primefaces.component.panel.Panel;
     public void queueEvent(FacesEvent event) {
         FacesContext context = getFacesContext();
         Map<String,String> params = context.getExternalContext().getRequestParameterMap();
-        String eventName = params.get(Constants.PARTIAL_BEHAVIOR_EVENT_PARAM);
+        String eventName = params.get(Constants.RequestParams.PARTIAL_BEHAVIOR_EVENT_PARAM);
         String clientId = this.getClientId(context);
         
         if(isSelfRequest(context)) {
@@ -108,5 +108,5 @@ import org.primefaces.component.panel.Panel;
     }
 
     private boolean isSelfRequest(FacesContext context) {
-        return this.getClientId(context).equals(context.getExternalContext().getRequestParameterMap().get(Constants.PARTIAL_SOURCE_PARAM));
+        return this.getClientId(context).equals(context.getExternalContext().getRequestParameterMap().get(Constants.RequestParams.PARTIAL_SOURCE_PARAM));
     }

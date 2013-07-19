@@ -20,68 +20,25 @@ import java.io.IOException;
 import javax.faces.component.UIComponent;
 import javax.faces.context.FacesContext;
 import javax.faces.context.ResponseWriter;
-import javax.faces.convert.ConverterException;
-import javax.servlet.ServletRequestWrapper;
-
-import org.apache.commons.fileupload.FileItem;
-import org.primefaces.event.FileUploadEvent;
-import org.primefaces.model.DefaultUploadedFile;
+import org.primefaces.context.RequestContext;
+import org.primefaces.expression.SearchExpressionFacade;
 import org.primefaces.renderkit.CoreRenderer;
-import org.primefaces.util.ComponentUtils;
 import org.primefaces.util.HTML;
 import org.primefaces.util.WidgetBuilder;
-import org.primefaces.webapp.MultipartRequest;
 
 public class FileUploadRenderer extends CoreRenderer {
-
+            
     @Override
 	public void decode(FacesContext context, UIComponent component) {
 		FileUpload fileUpload = (FileUpload) component;
-        String clientId = fileUpload.getClientId(context);
-		MultipartRequest multipartRequest = getMultiPartRequestInChain(context);
-		
-		if(multipartRequest != null) {
-			FileItem file = multipartRequest.getFileItem(clientId);
-
-            if(fileUpload.getMode().equals("simple")) {
-                decodeSimple(context, fileUpload, file);
-            }
-            else {
-                decodeAdvanced(context, fileUpload, file);
-            }
-		}
-    }
-	
-	public void decodeSimple(FacesContext context, FileUpload fileUpload, FileItem file) {
-		if(file.getName().equals(""))
-            fileUpload.setSubmittedValue("");
-        else
-            fileUpload.setSubmittedValue(new DefaultUploadedFile(file));
-	}
-    
-    public void decodeAdvanced(FacesContext context, FileUpload fileUpload, FileItem file) {
-		if(file != null) {
-            fileUpload.queueEvent(new FileUploadEvent(fileUpload, new DefaultUploadedFile(file)));
+        
+        if(!fileUpload.isDisabled()) {
+            if(RequestContext.getCurrentInstance().getApplicationContext().getConfig().isAtLeastJSF22())
+                NativeFileUploadDecoder.decode(context, fileUpload);
+            else
+                CommonsFileUploadDecoder.decode(context, fileUpload);
         }
-	}
-	
-	/**
-	 * Finds our MultipartRequestServletWrapper in case application contains other RequestWrappers
-	 */
-	private MultipartRequest getMultiPartRequestInChain(FacesContext facesContext) {
-		Object request = facesContext.getExternalContext().getRequest();
-		
-		while(request instanceof ServletRequestWrapper) {
-			if(request instanceof MultipartRequest) {
-				return (MultipartRequest) request;
-			}
-			else {
-				request = ((ServletRequestWrapper) request).getRequest();
-			}
-		}
-		
-		return null;
-	}
+    }
 
     @Override
 	public void encodeEnd(FacesContext context, UIComponent component) throws IOException {
@@ -103,18 +60,26 @@ public class FileUploadRenderer extends CoreRenderer {
             String update = fileUpload.getUpdate();
             String process = fileUpload.getProcess();
             
-            wb.attr("autoUpload", fileUpload.isAuto())
-                .attr("dnd", fileUpload.isDragDropSupport())
-                .attr("update", ComponentUtils.findClientIds(context, fileUpload, update), null)
-                .attr("process", ComponentUtils.findClientIds(context, fileUpload, process), null)
-                .attr("maxFileSize", fileUpload.getSizeLimit(), Integer.MAX_VALUE)
+            wb.attr("auto", fileUpload.isAuto(), false)
+                .attr("dnd", fileUpload.isDragDropSupport(), true)
+                .attr("update", SearchExpressionFacade.resolveComponentsForClient(context, fileUpload, update), null)
+                .attr("process", SearchExpressionFacade.resolveComponentsForClient(context, fileUpload, process), null)
+                .attr("maxFileSize", fileUpload.getSizeLimit(), Long.MAX_VALUE)
+                .attr("fileLimit", fileUpload.getFileLimit(), Integer.MAX_VALUE)
                 .attr("invalidFileMessage", fileUpload.getInvalidFileMessage(), null)
                 .attr("invalidSizeMessage", fileUpload.getInvalidSizeMessage(), null)
+                .attr("fileLimitMessage", fileUpload.getFileLimitMessage(), null)
+                .attr("merge", fileUpload.isMerge(), false)
+                .attr("messageTemplate", fileUpload.getMessageTemplate(), null)
+                .attr("previewWidth", fileUpload.getPreviewWidth(), 48)
+                .attr("previewHeight", fileUpload.getPreviewHeight(), Integer.MAX_VALUE)
+                .attr("disabled", fileUpload.isDisabled(), false)
                 .callback("onstart", "function()", fileUpload.getOnstart())
+                .callback("onerror", "function()", fileUpload.getOnerror())
                 .callback("oncomplete", "function()", fileUpload.getOncomplete());
             
             if(fileUpload.getAllowTypes() != null) {
-                wb.append(",acceptFileTypes:").append(fileUpload.getAllowTypes());
+                wb.append(",allowTypes:").append(fileUpload.getAllowTypes());
             }
         }
         
@@ -133,23 +98,26 @@ public class FileUploadRenderer extends CoreRenderer {
     protected void encodeAdvancedMarkup(FacesContext context, FileUpload fileUpload) throws IOException {
         ResponseWriter writer = context.getResponseWriter();
 		String clientId = fileUpload.getClientId(context);
+        String style = fileUpload.getStyle();
         String styleClass = fileUpload.getStyleClass();
         styleClass = styleClass == null ? FileUpload.CONTAINER_CLASS : FileUpload.CONTAINER_CLASS + " " + styleClass;
+        boolean disabled = fileUpload.isDisabled();
 
 		writer.startElement("div", fileUpload);
 		writer.writeAttribute("id", clientId, "id");
-        writer.writeAttribute("class", styleClass, "id");
-        if(fileUpload.getStyle() != null) 
-            writer.writeAttribute("style", fileUpload.getStyle(), "style");
+        writer.writeAttribute("class", styleClass, styleClass);
+        if(style != null) {
+            writer.writeAttribute("style", style, "style");
+        }
         
         //buttonbar
         writer.startElement("div", fileUpload);
-        writer.writeAttribute("class", FileUpload.BUTTON_BAR_CLASS, "styleClass");
+        writer.writeAttribute("class", FileUpload.BUTTON_BAR_CLASS, null);
 
         //choose button
-        encodeChooseButton(context, fileUpload);
+        encodeChooseButton(context, fileUpload, disabled);
         
-        if(fileUpload.isShowButtons() && !fileUpload.isAuto()) {
+        if(!fileUpload.isAuto()) {
             encodeButton(context, fileUpload.getUploadLabel(), FileUpload.UPLOAD_BUTTON_CLASS, "ui-icon-arrowreturnthick-1-n");
             encodeButton(context, fileUpload.getCancelLabel(), FileUpload.CANCEL_BUTTON_CLASS, "ui-icon-cancel");
         }
@@ -162,6 +130,8 @@ public class FileUploadRenderer extends CoreRenderer {
         
         writer.startElement("table", null);
         writer.writeAttribute("class", FileUpload.FILES_CLASS, null);
+        writer.startElement("tbody", null);
+        writer.endElement("tbody");
         writer.endElement("table");
         
         writer.endElement("div");
@@ -173,14 +143,18 @@ public class FileUploadRenderer extends CoreRenderer {
         encodeInputField(context, fileUpload, fileUpload.getClientId(context));
     }
     
-    protected void encodeChooseButton(FacesContext context, FileUpload fileUpload) throws IOException {
+    protected void encodeChooseButton(FacesContext context, FileUpload fileUpload, boolean disabled) throws IOException {
         ResponseWriter writer = context.getResponseWriter();
         String clientId = fileUpload.getClientId(context);
+        String cssClass = HTML.BUTTON_TEXT_ICON_LEFT_BUTTON_CLASS + " " + FileUpload.CHOOSE_BUTTON_CLASS;
+        if(disabled) {
+            cssClass += " ui-state-disabled";
+        }
         
-        writer.startElement("label", null);
-        writer.writeAttribute("class", HTML.BUTTON_TEXT_ICON_LEFT_BUTTON_CLASS + " " + FileUpload.CHOOSE_BUTTON_CLASS, null);
+        writer.startElement("span", null);
+        writer.writeAttribute("class", cssClass, null);
         
-        //button icon
+        //button icon 
         writer.startElement("span", null);
         writer.writeAttribute("class", HTML.BUTTON_LEFT_ICON_CLASS + " ui-icon-plusthick", null);
         writer.endElement("span");
@@ -191,9 +165,11 @@ public class FileUploadRenderer extends CoreRenderer {
         writer.writeText(fileUpload.getLabel(), "value");
         writer.endElement("span");
 
-        encodeInputField(context, fileUpload, clientId + "_input");
+        if(!disabled) {
+            encodeInputField(context, fileUpload, clientId + "_input");
+        }
         
-		writer.endElement("label");
+		writer.endElement("span");
     }
 
     protected void encodeInputField(FacesContext context, FileUpload fileUpload, String clientId) throws IOException {
@@ -214,10 +190,12 @@ public class FileUploadRenderer extends CoreRenderer {
     
     protected void encodeButton(FacesContext context, String label, String styleClass, String icon) throws IOException {
         ResponseWriter writer = context.getResponseWriter();
+        String cssClass = HTML.BUTTON_TEXT_ICON_LEFT_BUTTON_CLASS + " ui-state-disabled " + styleClass;
         
         writer.startElement("button", null);
 		writer.writeAttribute("type", "button", null);
-        writer.writeAttribute("class", HTML.BUTTON_TEXT_ICON_LEFT_BUTTON_CLASS + " " + styleClass, null);
+        writer.writeAttribute("class", cssClass, null);
+        writer.writeAttribute("disabled", "disabled", null);
         
         //button icon
         String iconClass = HTML.BUTTON_LEFT_ICON_CLASS ;
@@ -233,25 +211,4 @@ public class FileUploadRenderer extends CoreRenderer {
 
 		writer.endElement("button");
     }
-
-    /**
-     * Return null if no file is submitted in simple mode
-     * 
-     * @param context
-     * @param component
-     * @param submittedValue
-     * @return
-     * @throws ConverterException 
-     */
-    @Override
-    public Object getConvertedValue(FacesContext context, UIComponent component, Object submittedValue) throws ConverterException {
-        FileUpload fileUpload = (FileUpload) component;
-        
-        if(fileUpload.getMode().equals("simple") && submittedValue != null && submittedValue.equals("")) {
-            return null;
-        }
-        else {
-            return submittedValue;
-        }
-    } 
 }

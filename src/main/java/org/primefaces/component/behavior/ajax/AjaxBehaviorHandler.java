@@ -61,6 +61,8 @@ public class AjaxBehaviorHandler extends TagHandler implements BehaviorHolderAtt
     private final TagAttribute global;
     private final TagAttribute async;
     private final TagAttribute partialSubmit;
+    private final TagAttribute resetValues;
+    private final TagAttribute ignoreAutoUpdate;
     
     public AjaxBehaviorHandler(BehaviorConfig config) {
         super(config);
@@ -77,6 +79,8 @@ public class AjaxBehaviorHandler extends TagHandler implements BehaviorHolderAtt
         this.global = this.getAttribute("global");
         this.async = this.getAttribute("async");
         this.partialSubmit = this.getAttribute("partialSubmit");
+        this.resetValues = this.getAttribute("resetValues");
+        this.ignoreAutoUpdate = this.getAttribute("ignoreAutoUpdate");
     }
     
     public void apply(FaceletContext ctx, UIComponent parent) throws IOException {
@@ -197,6 +201,8 @@ public class AjaxBehaviorHandler extends TagHandler implements BehaviorHolderAtt
         setBehaviorAttribute(ctx, behavior, this.async, Boolean.class);
         setBehaviorAttribute(ctx, behavior, this.partialSubmit, Boolean.class);
         setBehaviorAttribute(ctx, behavior, this.listener, MethodExpression.class);
+        setBehaviorAttribute(ctx, behavior, this.resetValues, Boolean.class);
+        setBehaviorAttribute(ctx, behavior, this.ignoreAutoUpdate, Boolean.class);
         
         if(listener != null) {
             behavior.addAjaxBehaviorListener(new AjaxBehaviorListenerImpl(
@@ -218,7 +224,7 @@ public class AjaxBehaviorHandler extends TagHandler implements BehaviorHolderAtt
     }
     
     private void setBehaviorAttribute(FaceletContext ctx, AjaxBehavior behavior, TagAttribute attr, Class type) {
-        if(attr != null) {
+    	if(attr != null) {
             behavior.setValueExpression(attr.getLocalName(), attr.getValueExpression(ctx, type));
         }    
     }
@@ -236,7 +242,7 @@ public class AjaxBehaviorHandler extends TagHandler implements BehaviorHolderAtt
                 result = new ArrayList<AttachedObjectHandler>();
                 attrs.put("javax.faces.RetargetableHandlers", result);
             } else {
-                result = Collections.EMPTY_LIST;
+                result = Collections.emptyList();
             }
         }
         return result;

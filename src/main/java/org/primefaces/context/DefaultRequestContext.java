@@ -17,23 +17,20 @@ package org.primefaces.context;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.faces.FacesException;
+import javax.faces.application.FacesMessage;
 import javax.faces.component.UIComponent;
 import javax.faces.component.UIViewRoot;
-import javax.faces.component.visit.VisitCallback;
 import javax.faces.component.visit.VisitContext;
-import javax.faces.component.visit.VisitHint;
-import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 
-import org.primefaces.config.ConfigContainer;
+import org.primefaces.expression.SearchExpressionFacade;
 import org.primefaces.util.AjaxRequestBuilder;
 import org.primefaces.util.ComponentUtils;
+import org.primefaces.util.Constants;
 import org.primefaces.util.StringEncrypter;
 import org.primefaces.util.WidgetBuilder;
 import org.primefaces.visit.ResetInputVisitCallback;
@@ -45,7 +42,7 @@ public class DefaultRequestContext extends RequestContext {
     private final static String EXECUTE_SCRIPT_KEY = "EXECUTE_SCRIPT";
     private final static String APPLICATION_CONTEXT_KEY = DefaultApplicationContext.class.getName();
 
-    private Map<String, Object> attributes;
+    private Map<Object, Object> attributes;
     private WidgetBuilder widgetBuilder;
     private AjaxRequestBuilder ajaxRequestBuilder;
     private FacesContext context;
@@ -54,7 +51,7 @@ public class DefaultRequestContext extends RequestContext {
 
     public DefaultRequestContext(FacesContext context) {
     	this.context = context;
-    	this.attributes = new HashMap<String, Object>();
+    	this.attributes = new HashMap<Object, Object>();
     	this.widgetBuilder = new WidgetBuilder();
     	this.ajaxRequestBuilder = new AjaxRequestBuilder(context);
 
@@ -94,7 +91,7 @@ public class DefaultRequestContext extends RequestContext {
 	@SuppressWarnings("unchecked")
     public List<String> getScriptsToExecute() {
         if(attributes.get(EXECUTE_SCRIPT_KEY) == null) {
-            attributes.put(EXECUTE_SCRIPT_KEY, new ArrayList());
+            attributes.put(EXECUTE_SCRIPT_KEY, new ArrayList<String>());
         }
         return (List<String>) attributes.get(EXECUTE_SCRIPT_KEY);
     }
@@ -125,40 +122,63 @@ public class DefaultRequestContext extends RequestContext {
     }
 
     @Override
-    public void reset(Collection<String> ids) {
+    public void reset(Collection<String> expressions) {
         VisitContext visitContext = VisitContext.createVisitContext(context, null, ComponentUtils.VISIT_HINTS_SKIP_UNRENDERED);
 
-        for(String id : ids) {
-        	reset(visitContext, id);
+        for(String expression : expressions) {
+        	reset(visitContext, expression);
         }
     }
 
     @Override
-    public void reset(String id) {
+    public void reset(String expressions) {
         VisitContext visitContext = VisitContext.createVisitContext(context, null, ComponentUtils.VISIT_HINTS_SKIP_UNRENDERED);
 
-        reset(visitContext, id);
+        reset(visitContext, expressions);
     }
     
-    private void reset(VisitContext visitContext, String id) {
+    private void reset(VisitContext visitContext, String expressions) {
         UIViewRoot root = context.getViewRoot();
-
-        UIComponent targetComponent = root.findComponent(id);
-        if(targetComponent == null) {
-            throw new FacesException("Cannot find component with identifier \"" + id + "\" referenced from viewroot.");
+        
+        List<UIComponent> components = SearchExpressionFacade.resolveComponents(context, root, expressions);
+        for (UIComponent component : components) {
+            component.visitTree(visitContext, ResetInputVisitCallback.INSTANCE);
         }
-
-        targetComponent.visitTree(visitContext, ResetInputVisitCallback.INSTANCE);
+    }
+    
+    @Override
+    public void openDialog(String outcome) {
+        this.getAttributes().put("dialog.outcome", outcome);
+    }
+        
+    @Override
+    public void openDialog(String outcome, Map<String,Object> options, Map<String,List<String>> params) {
+        this.getAttributes().put(Constants.DIALOG_OUTCOME, outcome);
+        
+        if(options != null)
+            this.getAttributes().put(Constants.DIALOG_OPTIONS, options);
+        
+        if(options != null)
+            this.getAttributes().put(Constants.DIALOG_PARAMS, params);
     }
 
     @Override
-    public void returnFromDialog(Object data) {
-        Map<String,Object> session = context.getExternalContext().getSessionMap();
+    public void closeDialog(Object data) {
         Map<String,String> params = context.getExternalContext().getRequestParameterMap();
-        String dcid = params.get("dcid");
-        session.put(dcid, data);
+        String pfdlgcid = params.get(Constants.DIALOG_CONVERSATION_PARAM);
+            
+        if(data != null) {
+            Map<String,Object> session = context.getExternalContext().getSessionMap();            
+            session.put(pfdlgcid, data);
+        }
 
-        this.execute("PrimeFaces.hideDialog({dcid:'" + dcid + "'});");
+        this.execute("PrimeFaces.closeDialog({pfdlgcid:'" + pfdlgcid + "'});");
+    }
+
+    @Override
+    public void showMessageInDialog(FacesMessage message) {
+        this.execute("PrimeFaces.showMessageInDialog({severity:'" + message.getSeverity() + 
+                    "',summary:'" + message.getSummary() + "',detail:'" + message.getDetail() + "'});"); 
     }
     
     @Override

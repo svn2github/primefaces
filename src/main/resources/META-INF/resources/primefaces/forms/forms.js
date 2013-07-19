@@ -822,8 +822,25 @@ PrimeFaces.widget.SelectOneMenu = PrimeFaces.widget.BaseWidget.extend({
     bindFilterEvents: function() {
         var $this = this;
         
-        this.filterInput.on('keyup.ui-selectonemenu', function() {
-            $this.filter($(this).val());
+        this.filterInput.on('keyup.ui-selectonemenu', function(e) {
+            var keyCode = $.ui.keyCode,
+            key = e.which;
+                        
+            switch(key) {
+                case keyCode.UP:
+                case keyCode.DOWN:
+                case keyCode.LEFT:
+                case keyCode.RIGHT:
+                case keyCode.ENTER:
+                case keyCode.NUMPAD_ENTER:
+                case keyCode.TAB:
+                case keyCode.ESCAPE:
+                break;
+                
+                default:
+                    $this.filter($(this).val());
+                break;
+            }
         })
         .on('keydown.ui-selectonemenu',function(e) {
             var keyCode = $.ui.keyCode,
@@ -903,6 +920,7 @@ PrimeFaces.widget.SelectOneMenu = PrimeFaces.widget.BaseWidget.extend({
             this.selectItem(this.getActiveItem());
 
         event.preventDefault();
+        event.stopPropagation();
     },
             
     handleEscapeKey: function(event) {
@@ -935,7 +953,7 @@ PrimeFaces.widget.SelectOneMenu = PrimeFaces.widget.BaseWidget.extend({
     show: function() { 
         var $this = this;
         this.alignPanel();
-
+        
         this.panel.css('z-index', ++PrimeFaces.zindex);
 
         if($.browser.msie && /^[6,7]\.[0-9]+/.test($.browser.version)) {
@@ -944,12 +962,15 @@ PrimeFaces.widget.SelectOneMenu = PrimeFaces.widget.BaseWidget.extend({
 
         if(this.cfg.effect !== 'none') {
             this.panel.show(this.cfg.effect, {}, this.cfg.effectSpeed, function() {
+                PrimeFaces.scrollInView($this.itemsWrapper, $this.getActiveItem());
+                
                 if($this.cfg.filter)
                     $this.focusFilter();
             });
         }
         else {
             this.panel.show();
+            PrimeFaces.scrollInView(this.itemsWrapper, this.getActiveItem());
             
             if($this.cfg.filter)
                 this.focusFilter(10);
@@ -1026,10 +1047,13 @@ PrimeFaces.widget.SelectOneMenu = PrimeFaces.widget.BaseWidget.extend({
                                         ,offset : positionOffset
                                     });
     },
-    
+            
     setLabel: function(value) {
         if(this.cfg.editable) {
-            this.label.val(value);
+            if(value === '&nbsp;')
+                this.label.val('');
+            else
+                this.label.val(value);
         }
         else {
             if(value === '&nbsp;')
@@ -1092,6 +1116,8 @@ PrimeFaces.widget.SelectOneMenu = PrimeFaces.widget.BaseWidget.extend({
                     item.hide();   
             }
         }
+        
+        this.highlightItem(this.items.filter(':visible:first'));
         
         if(this.itemsContainer.height() < this.cfg.initialHeight) {
             this.itemsWrapper.css('height', 'auto');
@@ -1483,8 +1509,15 @@ PrimeFaces.widget.SelectListbox = PrimeFaces.widget.BaseWidget.extend({
             if(!item.hasClass('ui-state-highlight')) {
                 item.addClass('ui-state-hover');
             }
-        }).on('mouseout.selectListbox', function() {
+        })
+        .on('mouseout.selectListbox', function() {
             $(this).removeClass('ui-state-hover');
+        })
+        .on('dblclick.selectListbox', function(e) {       
+            $this.input.trigger('dblclick');
+            
+            PrimeFaces.clearSelection();
+            e.preventDefault();
         });
         
         //input
@@ -1492,7 +1525,7 @@ PrimeFaces.widget.SelectListbox = PrimeFaces.widget.BaseWidget.extend({
             $this.jq.addClass('ui-state-focus');
         }).on('blur.selectListbox', function() {
             $this.jq.removeClass('ui-state-focus');
-        })
+        });
     },
     
     unselectAll: function() {
@@ -1521,11 +1554,20 @@ PrimeFaces.widget.SelectOneListbox = PrimeFaces.widget.SelectListbox.extend({
         var $this = this;
         
         this.items.on('click.selectListbox', function(e) {       
-            var item = $(this);
+            var item = $(this),
+            selectedItem = $this.items.filter('.ui-state-highlight');
             
-            $this.unselectAll();
-            $this.selectItem(item);
-            $this.input.change();
+            if(item.index() !== selectedItem.index()) {
+                if(selectedItem.length) {
+                    $this.unselectItem(selectedItem);
+                }
+                
+                $this.selectItem(item);
+                $this.input.change();
+            }
+            
+            $this.input.trigger('click');
+            
             PrimeFaces.clearSelection();
             e.preventDefault();
         });
@@ -1549,8 +1591,10 @@ PrimeFaces.widget.SelectManyMenu = PrimeFaces.widget.SelectListbox.extend({
             }
             
             var item = $(this),
-            metaKey = (e.metaKey||e.ctrlKey);
-            
+            selectedItems = $this.items.filter('.ui-state-highlight'),
+            metaKey = (e.metaKey||e.ctrlKey),
+            unchanged = (!metaKey && selectedItems.length === 1 && selectedItems.index() === item.index());
+
             if(!e.shiftKey) {
                 if(!metaKey) {
                     $this.unselectAll();
@@ -1583,8 +1627,12 @@ PrimeFaces.widget.SelectManyMenu = PrimeFaces.widget.SelectListbox.extend({
                     $this.cursorItem = item;
                 }
             }
+            
+            if(!unchanged) {
+                $this.input.trigger('change');
+            }
 
-            $this.input.change();
+            $this.input.trigger('click');
             PrimeFaces.clearSelection();
             e.preventDefault();
         });
@@ -1610,7 +1658,7 @@ PrimeFaces.widget.SelectManyMenu = PrimeFaces.widget.SelectListbox.extend({
                 else
                     $this.selectItem(item);
                 
-                $this.input.change();
+                $this.input.trigger('change');
             });
         }
     },
@@ -1728,13 +1776,13 @@ PrimeFaces.widget.SelectManyButton = PrimeFaces.widget.BaseWidget.extend({
     
     select: function(button) {
         button.removeClass('ui-state-hover').addClass('ui-state-active')
-                                .children(':checkbox').attr('checked','checked').change();
+                                .children(':checkbox').prop('checked', true).change();
 
     },
     
     unselect: function(button) {
         button.removeClass('ui-state-active').addClass('ui-state-hover')
-                                .children(':checkbox').removeAttr('checked').change();
+                                .children(':checkbox').prop('checked', false).change();
     }
     
 });
@@ -1783,9 +1831,9 @@ PrimeFaces.widget.SelectOneButton = PrimeFaces.widget.BaseWidget.extend({
     },
     
     select: function(button) {
-        this.buttons.filter('.ui-state-active').removeClass('ui-state-active ui-state-hover').children(':radio').removeAttr('checked');
+        this.buttons.filter('.ui-state-active').removeClass('ui-state-active ui-state-hover').children(':radio').prop('checked', false);
 
-        button.addClass('ui-state-active').children(':radio').attr('checked','checked').change();
+        button.addClass('ui-state-active').children(':radio').prop('checked', true).change();
     }
     
 });
@@ -1839,7 +1887,7 @@ PrimeFaces.widget.SelectBooleanButton = PrimeFaces.widget.BaseWidget.extend({
     
     check: function() {
         if(!this.disabled) {
-            this.input.attr('checked', 'checked');
+            this.input.prop('checked', true);
             this.jq.addClass('ui-state-active').children('.ui-button-text').html(this.cfg.onLabel);
 
             if(this.icon.length > 0) {
@@ -1852,7 +1900,7 @@ PrimeFaces.widget.SelectBooleanButton = PrimeFaces.widget.BaseWidget.extend({
     
     uncheck: function() {
         if(!this.disabled) {
-            this.input.removeAttr('checked', 'checked');
+            this.input.prop('checked', false);
             this.jq.removeClass('ui-state-active').children('.ui-button-text').html(this.cfg.offLabel);
 
             if(this.icon.length > 0) {
@@ -1989,7 +2037,9 @@ PrimeFaces.widget.SelectCheckboxMenu = PrimeFaces.widget.BaseWidget.extend({
     },
     
     bindEvents: function() {
-        var _self = this;
+        var _self = this,
+        hideNS = 'mousedown.' + this.id,
+        resizeNS = 'resize.' + this.id;
         
         //Events for checkboxes
         this.bindCheckboxHover(this.checkboxes);
@@ -2025,7 +2075,7 @@ PrimeFaces.widget.SelectCheckboxMenu = PrimeFaces.widget.BaseWidget.extend({
         //Closer
         this.closer.on('mouseenter.selectCheckboxMenu', function(){
             $(this).addClass('ui-state-hover');
-        }).on('mousekeave.selectCheckboxMenu', function() {
+        }).on('mouseleave.selectCheckboxMenu', function() {
             $(this).removeClass('ui-state-hover');
         }).on('click.selectCheckboxMenu', function(e) {
             _self.hide(true);
@@ -2064,7 +2114,7 @@ PrimeFaces.widget.SelectCheckboxMenu = PrimeFaces.widget.BaseWidget.extend({
         });
 
         //hide overlay when outside is clicked
-        $(document.body).on('mousedown.selectCheckboxMenu', function (e) {        
+        $(document.body).off(hideNS).on(hideNS, function (e) {        
             if(_self.panel.is(':hidden')) {
                 return;
             }
@@ -2087,8 +2137,7 @@ PrimeFaces.widget.SelectCheckboxMenu = PrimeFaces.widget.BaseWidget.extend({
         });
 
         //Realign overlay on resize
-        var resizeNS = 'resize.' + this.id;
-        $(window).unbind(resizeNS).bind(resizeNS, function() {
+        $(window).off(resizeNS).on(resizeNS, function() {
             if(_self.panel.is(':visible')) {
                 _self.alignPanel();
             }
@@ -2720,4 +2769,89 @@ PrimeFaces.widget.ThemeSwitcher = PrimeFaces.widget.SelectOneMenu.extend({
         
         this._super(cfg);
     }
+});
+
+/*
+* PrimeFaces MultiSelectListbox Widget
+*/
+PrimeFaces.widget.MultiSelectListbox = PrimeFaces.widget.BaseWidget.extend({
+
+   init: function(cfg) {
+       this._super(cfg);
+
+       this.root = this.jq.children('div.ui-multiselectlistbox-listcontainer:first');
+       this.items = this.jq.find('li.ui-multiselectlistbox-item');
+       this.input = $(this.jqId + '_input');
+       this.cfg.disabled = this.jq.hasClass('ui-state-disabled');
+
+       if(!this.cfg.disabled) {
+           this.bindEvents();
+       }
+   },
+
+   bindEvents: function() {
+       var $this = this;
+
+       this.items.on('mouseover.multiSelectListbox', function() {
+           var item = $(this);
+
+           if(!item.hasClass('ui-state-highlight'))
+               $(this).addClass('ui-state-hover');
+       })
+       .on('mouseout.multiSelectListbox', function() {
+           var item = $(this);
+
+           if(!item.hasClass('ui-state-highlight'))
+               $(this).removeClass('ui-state-hover');
+       })
+       .on('click.multiSelectListbox', function() {
+           var item = $(this);
+
+           if(!item.hasClass('ui-state-highlight'))
+               $this.showOptionGroup(item);
+       })
+   },
+
+   unbindEvents: function() {
+       this.items.off('mouseover.multiSelectListbox mouseout.multiSelectListbox click.multiSelectListbox');
+   },
+
+   showOptionGroup: function(item) {
+       item.addClass('ui-state-highlight').removeClass('ui-state-hover').siblings().filter('.ui-state-highlight').removeClass('ui-state-highlight');
+       item.closest('.ui-multiselectlistbox-listcontainer').nextAll().remove();
+       this.input.val(item.attr('data-value'));
+
+       var childItemsContainer = item.children('ul');
+
+       if(childItemsContainer.length) {
+           var groupContainer = $('<div class="ui-multiselectlistbox-listcontainer ui-inputfield ui-widget-content ui-corner-all" style="display:none"></div>');
+           childItemsContainer.clone(true).appendTo(groupContainer).addClass('ui-multiselectlistbox-list').removeClass('ui-helper-hidden');
+           this.jq.append(groupContainer);
+
+           if(this.cfg.effect) {
+               groupContainer.show(this.cfg.effect);
+           }
+           else {
+               groupContainer.show();
+           }
+       }
+   },
+
+   enable: function() {
+       if(this.cfg.disabled) {
+           this.cfg.disabled = false;
+           this.jq.removeClass('ui-state-disabled');
+           this.bindEvents();
+       }
+
+   },
+
+   disable: function() {
+       if(!this.cfg.disabled) {
+           this.cfg.disabled = true;
+           this.jq.addClass('ui-state-disabled');
+           this.unbindEvents();
+           this.root.nextAll().remove();
+       }                
+   }
 });

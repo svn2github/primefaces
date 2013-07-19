@@ -40,4 +40,12 @@ public interface AjaxSource {
     public boolean isPartialSubmit();
     
     public boolean isPartialSubmitSet();
+    
+    public boolean isResetValues();
+    
+    public boolean isResetValuesSet();
+    
+    public boolean isIgnoreAutoUpdate();
+    
+    public boolean isAjaxified();
 }

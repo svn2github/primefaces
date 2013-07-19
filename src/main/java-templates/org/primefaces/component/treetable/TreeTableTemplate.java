@@ -39,6 +39,7 @@ import java.lang.StringBuilder;
     public static final String RESIZABLE_COLUMN_CLASS = "ui-resizable-column";
     public static final String INDENT_CLASS = "ui-treetable-indent";
 	public static final String EMPTY_MESSAGE_ROW_CLASS = "ui-widget-content ui-treetable-empty-message";
+    public final static String PARTIAL_SELECTED_CLASS = "ui-treetable-partialselected";
     
     private static final Collection<String> EVENT_NAMES = Collections.unmodifiableCollection(Arrays.asList("select","unselect", "expand", "collapse", "colResize"));
 
@@ -50,7 +51,7 @@ import java.lang.StringBuilder;
     }
 
     private boolean isRequestSource(FacesContext context) {
-        return this.getClientId(context).equals(context.getExternalContext().getRequestParameterMap().get(Constants.PARTIAL_SOURCE_PARAM));
+        return this.getClientId(context).equals(context.getExternalContext().getRequestParameterMap().get(Constants.RequestParams.PARTIAL_SOURCE_PARAM));
     }
 
     @Override
@@ -59,7 +60,7 @@ import java.lang.StringBuilder;
 
         if(isRequestSource(context)) {
             Map<String,String> params = context.getExternalContext().getRequestParameterMap();
-            String eventName = params.get(Constants.PARTIAL_BEHAVIOR_EVENT_PARAM);
+            String eventName = params.get(Constants.RequestParams.PARTIAL_BEHAVIOR_EVENT_PARAM);
             String clientId = this.getClientId(context);
             FacesEvent wrapperEvent = null;
 

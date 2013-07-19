@@ -17,7 +17,6 @@ package org.primefaces.component.graphicimage;
 
 import java.io.IOException;
 import java.net.URLEncoder;
-import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -99,7 +98,7 @@ public class GraphicImageRenderer extends CoreRenderer {
                 String rid = strEn.encrypt(image.getValueExpression("value").getExpressionString());
                 StringBuilder builder = new StringBuilder(resourcePath);
 
-                builder.append("&").append(Constants.DYNAMIC_CONTENT_PARAM).append("=").append(URLEncoder.encode(rid,"UTF-8"));
+                builder.append("&").append(Constants.DYNAMIC_CONTENT_PARAM).append("=").append(URLEncoder.encode(rid, "UTF-8"));
 
                 for(UIComponent kid : image.getChildren()) {
                     if(kid instanceof UIParameter) {
@@ -117,9 +116,9 @@ public class GraphicImageRenderer extends CoreRenderer {
                 src = builder.toString();
             }
 
-            if(!image.isCache()) {
+            if(src != null && !image.isCache()) {
                 src += src.contains("?") ? "&" : "?";
-                src += "primefaces_image=" + UUID.randomUUID().toString();
+                src += Constants.DYNAMIC_CONTENT_NOCACHE_PARAM + "=" + URLEncoder.encode(UUID.randomUUID().toString(), "UTF-8");
             }
             
             src = context.getExternalContext().encodeResourceURL(src);

@@ -17,12 +17,12 @@ package org.primefaces.component.effect;
 
 import java.io.IOException;
 
-import javax.faces.FacesException;
 import javax.faces.component.UIComponent;
 import javax.faces.component.UIParameter;
 import javax.faces.context.FacesContext;
 import javax.faces.context.ResponseWriter;
 
+import org.primefaces.expression.SearchExpressionFacade;
 import org.primefaces.renderkit.CoreRenderer;
 import org.primefaces.util.WidgetBuilder;
 
@@ -33,20 +33,12 @@ public class EffectRenderer extends CoreRenderer {
 		ResponseWriter writer = context.getResponseWriter();
 		Effect effect = (Effect) component;
         String clientId = effect.getClientId(context);
-		String target = null;
         String source = component.getParent().getClientId(context);
         String event = effect.getEvent();
         int delay = effect.getDelay();
 		
-		if(effect.getFor() != null) {
-			UIComponent _for = effect.findComponent(effect.getFor());
-			if(_for != null)
-				target = _for.getClientId(context);
-			else
-				throw new FacesException("Cannot find component \"" + effect.getFor() + "\" in view.");
-		} else {
-			target = source;
-		}
+        UIComponent targetComponent = SearchExpressionFacade.resolveComponent(context, effect, effect.getFor(), true);
+        String target = targetComponent.getClientId(context);
 		
 		String animation = getEffectBuilder(effect, target).build();
 		

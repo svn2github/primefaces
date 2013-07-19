@@ -77,7 +77,7 @@ PrimeFaces.widget.DataTable = PrimeFaces.widget.BaseWidget.extend({
             return false;
         }
     },
-    
+
     /**
      * @Override
      */
@@ -490,16 +490,14 @@ PrimeFaces.widget.DataTable = PrimeFaces.widget.BaseWidget.extend({
         this.footerTable = this.scrollFooter.children('table');
         this.colgroup = this.scrollBody.find('> table > colgroup');
         this.footerCols = this.scrollFooter.find('> .ui-datatable-scrollable-footer-box > table > tfoot > tr > td');
-        
-        if(this.cfg.scrollHeight) {
-            if(this.cfg.scrollHeight.indexOf('%') != -1) {
-                var height = (this.jq.parent().innerHeight() * (parseInt(this.cfg.scrollHeight) / 100)) - (this.scrollHeader.innerHeight() + this.scrollFooter.innerHeight());
-                this.scrollBody.height(parseInt(height));
-            }
-        }
-        
+        this.percentageScrollHeight = this.cfg.scrollHeight && (this.cfg.scrollHeight.indexOf('%') !== -1);
+        this.percentageScrollWidth = this.cfg.scrollWidth && (this.cfg.scrollWidth.indexOf('%') !== -1);
         var $this = this,
         scrollBarWidth = this.getScrollbarWidth() + 'px';
+        
+        if(this.percentageScrollHeight) {
+            this.adjustScrollHeight();
+        }
 
         this.scrollHeaderBox.css('margin-right', scrollBarWidth);
         this.scrollFooterBox.css('margin-right', scrollBarWidth);
@@ -508,14 +506,10 @@ PrimeFaces.widget.DataTable = PrimeFaces.widget.BaseWidget.extend({
         this.fixColumnWidths();
         
         if(this.cfg.scrollWidth) {
-            var swidth = this.cfg.scrollWidth;
-            if(this.cfg.scrollWidth.indexOf('%') != -1) {
-                swidth = parseInt((this.jq.parent().innerWidth() * (parseInt(this.cfg.scrollWidth) / 100)));
-            }
-            
-            this.scrollHeader.width(swidth);
-            this.scrollBody.css('margin-right', 0).width(swidth);
-            this.scrollFooter.width(swidth);
+            if(this.percentageScrollWidth)
+                this.adjustScrollWidth();
+            else
+                this.setScrollWidth(this.cfg.scrollWidth);
         }
         
         this.restoreScrollState();
@@ -542,6 +536,37 @@ PrimeFaces.widget.DataTable = PrimeFaces.widget.BaseWidget.extend({
             
             $this.saveScrollState();
         });
+        
+        var resizeNS = 'resize.' + this.id;
+        $(window).unbind(resizeNS).bind(resizeNS, function() {
+            if($this.jq.is(':visible')) {
+                if($this.percentageScrollHeight)
+                    $this.adjustScrollHeight();
+                
+                if($this.percentageScrollWidth)
+                    $this.adjustScrollWidth();
+            }
+        });
+    },
+            
+    adjustScrollHeight: function() {
+        var relativeHeight = this.jq.parent().innerHeight() * (parseInt(this.cfg.scrollHeight) / 100),
+        scrollersHeight = (this.scrollHeader.innerHeight() + this.scrollFooter.innerHeight()),
+        paginatorsHeight = this.paginator ? this.paginator.getContainerHeight() : 0,
+        height = (relativeHeight - (scrollersHeight + paginatorsHeight));
+        
+        this.scrollBody.height(height);
+    },
+            
+    adjustScrollWidth: function() {
+        var width = parseInt((this.jq.parent().innerWidth() * (parseInt(this.cfg.scrollWidth) / 100)));
+        this.setScrollWidth(width);
+    },
+            
+    setScrollWidth: function(width) {
+        this.scrollHeader.width(width);
+        this.scrollBody.css('margin-right', 0).width(width);
+        this.scrollFooter.width(width);
     },
     
     getScrollbarWidth: function() {
@@ -800,6 +825,11 @@ PrimeFaces.widget.DataTable = PrimeFaces.widget.BaseWidget.extend({
             }
 
             PrimeFaces.ajax.AjaxUtils.handleResponse.call(this, xmlDoc);
+            
+            var paginator = $this.getPaginator();             
+            if(paginator && this.args && paginator.cfg.rowCount !== this.args.totalRecords) {
+                paginator.setTotalRecords(this.args.totalRecords);
+            }
 
             return true;
         };
@@ -2046,7 +2076,6 @@ PrimeFaces.widget.DataTable = PrimeFaces.widget.BaseWidget.extend({
             else
                 this.checkAllToggler.removeClass('ui-state-active').children('span.ui-chkbox-icon').removeClass('ui-icon ui-icon-check');
         }
-        
     }  
 
 });

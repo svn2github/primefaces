@@ -21,7 +21,6 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 import javax.el.ValueExpression;
 import javax.faces.FacesException;
@@ -29,11 +28,9 @@ import javax.faces.application.ConfigurableNavigationHandler;
 import javax.faces.application.NavigationCase;
 import javax.faces.component.*;
 import javax.faces.component.visit.VisitHint;
-import javax.faces.context.ExternalContext;
 import javax.faces.context.FacesContext;
 import javax.faces.convert.Converter;
 import javax.faces.model.SelectItem;
-import javax.faces.validator.BeanValidator;
 import org.primefaces.component.api.RTLAware;
 import org.primefaces.component.api.Widget;
 import org.primefaces.config.ConfigContainer;
@@ -42,7 +39,7 @@ import org.primefaces.context.RequestContext;
 public class ComponentUtils {
 
 	public static final EnumSet<VisitHint> VISIT_HINTS_SKIP_UNRENDERED = EnumSet.of(VisitHint.SKIP_UNRENDERED);
-	
+
 	/**
 	 * Algorithm works as follows;
 	 * - If it's an input component, submitted value is checked first since it'd be the value to be used in case validation errors
@@ -186,6 +183,7 @@ public class ComponentUtils {
 		}
 	}
 
+	@Deprecated // currently unused
 	public static List<SelectItem> createSelectItems(UIComponent component) {
 		List<SelectItem> items = new ArrayList<SelectItem>();
 		Iterator<UIComponent> children = component.getChildren().iterator();
@@ -221,7 +219,8 @@ public class ComponentUtils {
 	public static String escapeJQueryId(String id) {
 		return "#" + id.replaceAll(":", "\\\\\\\\:");
 	}
-		
+	
+	@Deprecated
 	public static String findClientIds(FacesContext context, UIComponent component, String list) {
 		if(list == null) {
 			return "@none";
@@ -285,6 +284,7 @@ public class ComponentUtils {
 		return clientIds;
 	}
 	
+	@Deprecated
 	public static String findComponentClientId(String id) {
 	    FacesContext facesContext = FacesContext.getCurrentInstance();
 	    UIComponent component = findComponent(facesContext.getViewRoot(), id);
@@ -292,6 +292,7 @@ public class ComponentUtils {
 	    return component.getClientId(facesContext);
 	}
 	
+	//TODO perf
 	public static UIComponent findComponent(UIComponent base, String id) {
 	    if (id.equals(base.getId()))
 	      return base;

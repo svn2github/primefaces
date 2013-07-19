@@ -18,8 +18,8 @@ package org.primefaces.context;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import javax.faces.application.FacesMessage;
 
-import org.primefaces.config.ConfigContainer;
 import org.primefaces.util.AjaxRequestBuilder;
 import org.primefaces.util.StringEncrypter;
 import org.primefaces.util.WidgetBuilder;
@@ -96,15 +96,15 @@ public abstract class RequestContext {
 
     /**
      * Reset an editableValueHolder.
-     * @param id Client side identifier of the component.
+     * @param expressions A string with one or multiple search expression to resolve the components.
      */
-    public abstract void reset(String id);
+    public abstract void reset(String expressions);
 
     /**
      * Reset a collection of editableValueHolders.
-     * @param ids Client side identifiers of the components.
+     * @param expressions A list with with one or multiple search expression to resolve the components.
      */
-    public abstract void reset(Collection<String> ids);
+    public abstract void reset(Collection<String> expressions);
 
     /**
      * @return Shared WidgetBuilder instance of the current request
@@ -116,13 +116,49 @@ public abstract class RequestContext {
      */
     public abstract AjaxRequestBuilder getAjaxRequestBuilder();
     
+    /**
+     * @return Attributes map in RequestContext scope
+     */
     public abstract Map<Object,Object> getAttributes();
 
-    public abstract void returnFromDialog(Object data);
+    /**
+     * Open a view in dialog.
+     * @param outcome The logical outcome used to resolve a navigation case.
+     */
+    public abstract void openDialog(String outcome);
+    
+    /**
+     * Open a view in dialog.
+     * @param outcome The logical outcome used to resolve a navigation case.
+     * @param options Configuration options for the dialog.
+     * @param params Parameters to send to the view displayed in a dialog.
+     */
+    public abstract void openDialog(String outcome, Map<String,Object> options, Map<String,List<String>> params);
+    
+    /**
+     * Close a dialog.
+     * @param data Optional data to pass back to a dialogReturn event.
+     */
+    public abstract void closeDialog(Object data);
+    
+    /**
+     * Displays a message in a dialog.
+     * @param message FacesMessage to be displayed.
+     */
+    public abstract void showMessageInDialog(FacesMessage message);
 
+    /**
+     * @return ApplicationContext instance.
+     */
     public abstract ApplicationContext getApplicationContext();
 
+    /**
+     * @return StringEncrypter used to encode and decode a string.
+     */
 	public abstract StringEncrypter getEncrypter();
     
+    /**
+     * Clear resources.
+     */
     public abstract void release();
 }

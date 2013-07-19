@@ -30,12 +30,12 @@ import org.primefaces.event.SelectEvent;
 
         if(event instanceof AjaxBehaviorEvent) {
             Map<String,String> params = context.getExternalContext().getRequestParameterMap();
-            String eventName = params.get(Constants.PARTIAL_BEHAVIOR_EVENT_PARAM);
+            String eventName = params.get(Constants.RequestParams.PARTIAL_BEHAVIOR_EVENT_PARAM);
 
             if(eventName.equals("dialogReturn")) {
                 AjaxBehaviorEvent behaviorEvent = (AjaxBehaviorEvent) event;
                 Map<String,Object> session = context.getExternalContext().getSessionMap();
-                String dcid = params.get(this.getClientId(context) + "_dcid");
+                String dcid = params.get(this.getClientId(context) + "_pfdlgcid");
                 Object selectedValue = session.get(dcid);
                 session.remove(dcid);
         
@@ -93,4 +93,24 @@ import org.primefaces.event.SelectEvent;
     
     public boolean isPartialSubmitSet() {
         return (getStateHelper().get(PropertyKeys.partialSubmit) != null) || (this.getValueExpression("partialSubmit") != null);
+    }
+    
+    public boolean isResetValuesSet() {
+        return (getStateHelper().get(PropertyKeys.resetValues) != null) || (this.getValueExpression("resetValues") != null);
+    }
+    
+    private String confirmationScript;
+    
+    public String getConfirmationScript() {
+        return this.confirmationScript;
+    }
+    public void setConfirmationScript(String confirmationScript) {
+        this.confirmationScript = confirmationScript;
+    }
+    public boolean requiresConfirmation() {
+        return this.confirmationScript != null;
+    }
+    
+    public boolean isAjaxified() {
+        return !getType().equals("reset") && !getType().equals("button") && isAjax();
     }

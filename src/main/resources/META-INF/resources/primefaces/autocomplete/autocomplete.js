@@ -49,8 +49,13 @@ PrimeFaces.widget.AutoComplete = PrimeFaces.widget.BaseWidget.extend({
             }
             
             //force selection
-            if(this.cfg.forceSelection) {
+            if(this.cfg.forceSelection && !this.cfg.multiple) {
                 this.setupForceSelection();
+            }
+
+            //Multiple and force selection
+            if(this.cfg.forceSelection && this.cfg.multiple) {
+                this.setupMultipleForceSelection();
             }
 
             //Panel management
@@ -211,7 +216,11 @@ PrimeFaces.widget.AutoComplete = PrimeFaces.widget.BaseWidget.extend({
             key = e.which,
             shouldSearch = true;
 
-            if(key == keyCode.UP 
+            if (key == keyCode.ESCAPE) {
+                _self.hide();
+                shouldSearch = false;
+            }
+            else if(key == keyCode.UP 
                 || key == keyCode.LEFT 
                 || key == keyCode.DOWN 
                 || key == keyCode.RIGHT 
@@ -340,8 +349,10 @@ PrimeFaces.widget.AutoComplete = PrimeFaces.widget.BaseWidget.extend({
 
                 _self.inputContainer.before(itemDisplayMarkup);
                 _self.multiItemContainer.children('.ui-helper-hidden').fadeIn();
-                _self.input.val('').focus();
-
+                
+                if(!_self.cfg.forceSelection)
+                    _self.input.val('').focus();
+                
                 _self.hinput.append('<option value="' + itemValue + '" selected="selected"></option>');
             }
             else {
@@ -448,14 +459,6 @@ PrimeFaces.widget.AutoComplete = PrimeFaces.widget.BaseWidget.extend({
         }
 
         var _self = this;
-
-        //start callback
-        if(this.cfg.onstart) {
-            var retVal = this.cfg.onstart.call(this, query);     
-            if(retVal === false) {
-                return;
-            }        
-        }
         
         if(this.cfg.itemtip) {
             this.itemtip.hide();
@@ -463,6 +466,7 @@ PrimeFaces.widget.AutoComplete = PrimeFaces.widget.BaseWidget.extend({
         
         var options = {
             source: this.id,
+            process: this.id,
             update: this.id,
             formId: this.cfg.formId,
             onsuccess: function(responseXML) {
@@ -493,23 +497,17 @@ PrimeFaces.widget.AutoComplete = PrimeFaces.widget.BaseWidget.extend({
             }
         };
 
-        //complete callback
-        if(this.cfg.oncomplete) {
-            options.oncomplete = this.cfg.oncomplete;
-        }
-        
-        //process
-        options.process = this.cfg.process ? this.id + ' ' + this.cfg.process : this.id;
-
-        if(this.cfg.global === false) {
-            options.global = false;
-        }
-
         options.params = [
           {name: this.id + '_query', value: query}  
         ];
         
-        PrimeFaces.ajax.AjaxRequest(options);
+        if(this.hasBehavior('query')) {
+            var queryBehavior = this.cfg.behaviors['query'];
+            queryBehavior.call(this, query, options);
+        } 
+        else {
+            PrimeFaces.ajax.AjaxRequest(options); 
+        }
     },
     
     show: function() {
@@ -582,7 +580,7 @@ PrimeFaces.widget.AutoComplete = PrimeFaces.widget.BaseWidget.extend({
     setupForceSelection: function() {
         this.cachedResults = [this.input.val()];
         var _self = this;
-
+        
         this.input.blur(function() {
             var value = $(this).val(),
             valid = false;
@@ -593,7 +591,7 @@ PrimeFaces.widget.AutoComplete = PrimeFaces.widget.BaseWidget.extend({
                     break;
                 }
             }
-
+            
             if(!valid) {
                 _self.input.val('');
                 _self.hinput.val('');
@@ -601,6 +599,35 @@ PrimeFaces.widget.AutoComplete = PrimeFaces.widget.BaseWidget.extend({
         });
     },
     
+    setupMultipleForceSelection: function() {
+    
+        this.cachedResults = [this.input.val()];
+        var _self = this;
+        var valid = false;
+        
+        this.input.blur(function() {
+            var value = $(this).val();
+            
+            for(var i = 0; i < _self.cachedResults.length; i++) {
+                if(_self.cachedResults[i] == value) {
+                    valid = true;
+                    break;
+                }
+            }
+            if(!valid) {
+                _self.input.val('');
+            }
+        }).keydown(function(e){
+            var keyCode = $.ui.keyCode;
+            
+            if(e.which == keyCode.ENTER || e.which == keyCode.NUMPAD_ENTER) {
+                if(!valid) {
+                    _self.input.val('');
+                }
+            }
+        });
+    },
+            
     disable: function() {
         this.disabled = true;
         this.input.addClass('ui-state-disabled').attr('disabled', 'disabled');
@@ -621,6 +648,14 @@ PrimeFaces.widget.AutoComplete = PrimeFaces.widget.BaseWidget.extend({
     
     activate: function() {
         this.active = true;
+    },
+    
+    hasBehavior: function(event) {
+        if(this.cfg.behaviors) {
+            return this.cfg.behaviors[event] != undefined;
+        }
+    
+        return false;
     },
     
     alignPanel: function() {

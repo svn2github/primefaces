@@ -55,6 +55,9 @@ public class AjaxBehavior extends ClientBehaviorBase implements AjaxSource {
     private Boolean disabled;
     private Boolean partialSubmit;
     private boolean partialSubmitSet = false;
+    private Boolean resetValues;
+    private boolean resetValuesSet = false;
+    private Boolean ignoreAutoUpdate;
     
     public final static String BEHAVIOR_ID = "org.primefaces.component.AjaxBehavior";
 
@@ -198,6 +201,33 @@ public class AjaxBehavior extends ClientBehaviorBase implements AjaxSource {
         return this.partialSubmitSet || (this.getValueExpression("partialSubmit") != null);
     }
 
+    public boolean isResetValues() {
+        Boolean result = (Boolean) eval("resetValues", resetValues);
+        
+        return ((result != null) ? result : false);
+    }
+    public void setResetValues(boolean resetValues) {
+        this.resetValues = resetValues;
+        this.resetValuesSet = true;
+        
+        clearInitialState();
+    }
+    
+    public boolean isResetValuesSet() {
+        return this.resetValuesSet || (this.getValueExpression("resetValues") != null);
+    }
+    
+    public boolean isIgnoreAutoUpdate() {
+        Boolean result = (Boolean) eval("ignoreAutoUpdate", ignoreAutoUpdate);
+        
+        return ((result != null) ? result : false);
+    }
+    public void setIgnoreAutoUpdate(boolean ignoreAutoUpdate) {
+        this.ignoreAutoUpdate = ignoreAutoUpdate;
+        
+        clearInitialState();
+    }
+    
     protected Object eval(String propertyName, Object value) {
         if(value != null) {
             return value;
@@ -281,6 +311,11 @@ public class AjaxBehavior extends ClientBehaviorBase implements AjaxSource {
         } else if ("partialSubmit".equals(propertyName)) {
             partialSubmit = (Boolean)value;
             this.partialSubmitSet = true;
+        } else if ("resetValues".equals(propertyName)) {
+        	resetValues = (Boolean)value;
+        	this.resetValuesSet = true;
+        } else if ("ignoreAutoUpdate".equals(propertyName)) {
+        	ignoreAutoUpdate = (Boolean)value;
         }
     }
     
@@ -297,7 +332,7 @@ public class AjaxBehavior extends ClientBehaviorBase implements AjaxSource {
                 values = new Object[] {superState};
         } 
         else {
-            values = new Object[14];
+            values = new Object[16];
       
             values[0] = superState;
             values[1] = onstart;
@@ -311,8 +346,10 @@ public class AjaxBehavior extends ClientBehaviorBase implements AjaxSource {
             values[9] = async;
             values[10] = global;
             values[11] = partialSubmit;
-            values[12] = listener;
-            values[13] = saveBindings(context, bindings);
+            values[12] = resetValues;
+            values[13] = ignoreAutoUpdate;
+            values[14] = listener;
+            values[15] = saveBindings(context, bindings);
         }
 
         return values;
@@ -336,8 +373,10 @@ public class AjaxBehavior extends ClientBehaviorBase implements AjaxSource {
                 async = (Boolean) values[9];
                 global = (Boolean) values[10];
                 partialSubmit = (Boolean) values[11];
-                listener = (MethodExpression) values[12];
-                bindings = restoreBindings(context, values[13]);
+                resetValues = (Boolean) values[12];
+                ignoreAutoUpdate = (Boolean) values[13];
+                listener = (MethodExpression) values[14];
+                bindings = restoreBindings(context, values[15]);
 
                 clearInitialState();
             }
@@ -385,5 +424,9 @@ public class AjaxBehavior extends ClientBehaviorBase implements AjaxSource {
 
     public void removeAjaxBehaviorListener(AjaxBehaviorListener listener) {
         removeBehaviorListener(listener);
+    }
+
+    public boolean isAjaxified() {
+        return true;
     }
 }

@@ -38,6 +38,7 @@ public class AjaxStatusRenderer extends CoreRenderer {
 		ResponseWriter writer = context.getResponseWriter();
 		String clientId = status.getClientId(context);
 		String widgetVar = status.resolveWidgetVar();
+        String widgetInstance = "PF('" + widgetVar + "')";
         WidgetBuilder wb = getWidgetBuilder(context);
         wb.widget("AjaxStatus", widgetVar, clientId, false);
 
@@ -45,11 +46,11 @@ public class AjaxStatusRenderer extends CoreRenderer {
         
         writer.write(wb.build());
 				
-		encodeCallback(context, status, widgetVar, "ajaxSend", "onprestart", AjaxStatus.PRESTART_FACET);
-		encodeCallback(context, status, widgetVar, "ajaxStart", "onstart", AjaxStatus.START_FACET);
-		encodeCallback(context, status, widgetVar, "ajaxError", "onerror", AjaxStatus.ERROR_FACET);
-		encodeCallback(context, status, widgetVar, "ajaxSuccess", "onsuccess", AjaxStatus.SUCCESS_FACET);
-		encodeCallback(context, status, widgetVar, "ajaxComplete", "oncomplete", AjaxStatus.COMPLETE_FACET);
+		encodeCallback(context, status, widgetInstance, "ajaxSend", "onprestart", AjaxStatus.PRESTART_FACET);
+		encodeCallback(context, status, widgetInstance, "ajaxStart", "onstart", AjaxStatus.START_FACET);
+		encodeCallback(context, status, widgetInstance, "ajaxError", "onerror", AjaxStatus.ERROR_FACET);
+		encodeCallback(context, status, widgetInstance, "ajaxSuccess", "onsuccess", AjaxStatus.SUCCESS_FACET);
+		encodeCallback(context, status, widgetInstance, "ajaxComplete", "oncomplete", AjaxStatus.COMPLETE_FACET);
 
 		endScript(writer);
 	}
@@ -60,7 +61,8 @@ public class AjaxStatusRenderer extends CoreRenderer {
 		
 		if(fn != null)
 			writer.write(var + ".bindCallback('" + event + "',function(){" + fn + "});");
-		else if(status.getFacet(facetName) != null)
+
+		if(status.getFacet(facetName) != null)
 			writer.write(var + ".bindFacet('" + event + "', '" + facetName + "');");
 	}
 

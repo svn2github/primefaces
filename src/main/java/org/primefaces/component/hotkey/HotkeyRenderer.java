@@ -53,7 +53,7 @@ public class HotkeyRenderer extends CoreRenderer {
         writer.write("$(function() {");
 		writer.write("$(document).bind('keydown', '" + hotkey.getBind() + "', function(){");
 	
-		if(hotkey.getHandler() == null) {
+		if(hotkey.isAjaxified()) {
 			UIComponent form = ComponentUtils.findParentForm(context,hotkey);
 
 			if(form == null) {
@@ -70,6 +70,8 @@ public class HotkeyRenderer extends CoreRenderer {
                 .async(hotkey.isAsync())
                 .global(hotkey.isGlobal())
                 .partialSubmit(hotkey.isPartialSubmit(), hotkey.isPartialSubmitSet())
+                .resetValues(hotkey.isResetValues(), hotkey.isResetValuesSet())
+                .ignoreAutoUpdate(hotkey.isIgnoreAutoUpdate())
                 .onstart(hotkey.getOnstart())
                 .onerror(hotkey.getOnerror())
                 .onsuccess(hotkey.getOnsuccess())

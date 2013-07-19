@@ -154,7 +154,7 @@ PrimeFaces.widget.Paginator = PrimeFaces.widget.BaseWidget.extend({
         this.currentReport.text(text);
 
         //rows per page dropdown
-        this.rppSelect.attr('value', this.cfg.rows);
+        this.rppSelect.children('option').prop('selected', false).filter('option[value=' + this.cfg.rows + ']').prop('selected', true);
 
         //jump to page dropdown
         if(this.jtpSelect.length > 0) {
@@ -238,5 +238,15 @@ PrimeFaces.widget.Paginator = PrimeFaces.widget.BaseWidget.extend({
             
     getCurrentPage: function() {
         return this.cfg.page;
+    },
+            
+    getContainerHeight: function() {
+        var height = 0;
+        
+        for(var i = 0; i < this.jq.length; i++) {
+            height += this.jq.eq(i).innerHeight();
+        }
+        
+        return height;
     }
 });
